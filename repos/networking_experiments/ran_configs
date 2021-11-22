@@ -1,0 +1,6 @@
+Targets that I have successfully ran:
+ 
+- netperf_lwip: speedtest on local tap0
+- genode_org: downloads genode.org and hosts on localhost (tap0)
+- lwip_lx: lwip test on top of linux
+- lighttpd: http web server
