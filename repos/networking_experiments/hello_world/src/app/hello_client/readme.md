@@ -1,0 +1,1 @@
+simple timer client that registers a signal handler and prints time every second

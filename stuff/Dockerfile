@@ -79,7 +79,7 @@ RUN curl -s -L -o ${GENODE_FILE} ${GENODE_URL}/tarball/${GENODE_BRANCH} && \
 #
 
 # Copy prebuilt netperf
-COPY workdir/genode/netperf-2.6.0 /usr/local/bin
+COPY netperf-2.6.0 /usr/local/bin
 
 # Install additional packages for convenient debugging and building some
 # targets
@@ -92,5 +92,5 @@ RUN cp /usr/bin/aclocal-1.16 /usr/bin/aclocal-1.15			&& \
 
 
 # Add user for non-root access
-RUN adduser --disabled-password --uid 1000 --shell /bin/bash --home /workdir anton
+RUN adduser --disabled-password --uid 1000 --shell /bin/bash --home /root/user anton
 USER anton
