@@ -1,11 +1,16 @@
 #!/bin/sh
 
-echo "creating bridge"
+net=br0
+isowner=false
 
-ip link add br0 type bridge
-ip link set br0 up
-ip addr add 172.20.0.1/16 dev br0
-dnsmasq --interface=br0 --bind-interfaces --dhcp-range=172.20.0.2,172.20.255.254
+if [ ! -e /sys/class/net/$net ]; then
+  echo "creating bridge"
+  isowner=true
+  ip link add $net type bridge
+  ip link set $net up
+  ip addr add 172.20.0.1/16 dev $net
+  dnsmasq --interface=$net --bind-interfaces --dhcp-range=172.20.0.2,172.20.0.254
+fi
 
 if [ -z "$1" ]
   then
@@ -25,7 +30,7 @@ macaddr=`echo 52:54:$(random_byte):$(random_byte):$(random_byte):$(random_byte)`
 echo $macaddr
 
 qemu-system-x86_64 \
--display sdl \
+-display none \
 -cpu core2duo \
 -machine q35 \
 -serial mon:stdio \
@@ -34,5 +39,9 @@ qemu-system-x86_64 \
 -net nic,model=e1000,netdev=net0,macaddr=$macaddr \
 -cdrom "$image"
 
-ip link delete br0
-killall dnsmasq
+if $isowner; then
+  echo "removing net"
+  ip link delete br0
+  killall dnsmasq
+fi
+

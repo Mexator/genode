@@ -33,11 +33,11 @@ void serve()
         int client = accept(sock, &addr, &len);
         puts("client accepted");
 
-
         char buf[1024];
 
         recv(client, buf, 1024, 0);
         send(client, buf, 1024, 0);
+        shutdown(client, SHUT_RDWR);
         close(client);
     }
 }
