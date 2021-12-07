@@ -35,8 +35,8 @@ void serve()
 
         char buf[1024];
 
-        recv(client, buf, 1024, 0);
-        send(client, buf, 1024, 0);
+        read(client, buf, 1024);
+        write(client, buf, 1024);
         shutdown(client, SHUT_RDWR);
         close(client);
     }

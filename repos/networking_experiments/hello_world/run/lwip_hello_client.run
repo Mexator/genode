@@ -50,8 +50,11 @@ install_config {
 			<service name="Nic"/>
 			<service name="Uplink"/>
 		</provides>
-		<config verbose_domain_state="yes"
-		        dhcp_discover_timeout_sec="1">
+		<config verbose="yes"
+          verbose_packets="yes"
+          verbose_domain_state="yes"
+		  dhcp_discover_timeout_sec="1"
+          verbose_packet_drop="yes">
 
 			<policy label_prefix="lwip_hello" domain="downlink"/>
 			<policy label_prefix="drivers"           domain="uplink"/>
@@ -63,7 +66,6 @@ install_config {
 				     udp-ports="16384"
 				     icmp-ids="16384"/>
 
-				<tcp-forward port="443" domain="downlink" to="10.0.3.2"/>
 				<tcp-forward port="80"  domain="downlink" to="10.0.3.2"/>
 
 			</domain>
@@ -89,8 +91,8 @@ install_config {
 			<service name="Nic"> <child name="nic_router"/> </service>
 			<any-service> <parent/> <any-child/> </any-service>
 		</route>
-        <config>
-			<vfs>
+	 	<config  verbose="yes" ld_verbose="yes" >
+        	<vfs>
 				<dir name="dev">    <log/>             </dir>
 				<dir name="socket"> <lwip dhcp="yes"/> </dir>
 			</vfs>
