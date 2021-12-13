@@ -14,7 +14,7 @@ void spam(Libc::Env &env)
 
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
-    inet_pton(AF_INET, "172.20.0.1", &serv_addr.sin_addr.s_addr);
+    inet_pton(AF_INET, "172.20.0.17", &serv_addr.sin_addr.s_addr);
     serv_addr.sin_port = htons(80);
 
     int res = connect(sock, (const sockaddr *)&serv_addr, sizeof(serv_addr));
@@ -30,11 +30,11 @@ void spam(Libc::Env &env)
 
         char buf[1024] = "asdasd";
 
-        if (write(res, buf, 1024) == -1)
+        if (send(sock, buf, 1024, 0) == -1)
         {
             puts("send failed");
         }
-        if (read(res, buf, 1024) == -1)
+        if (read(sock, buf, 1024) == -1)
         {
             puts("recv failed");
         }

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# This will make host route packets between guests
+iptables -I FORWARD -m physdev --physdev-is-bridged -j ACCEPT
+
 net=br0
 isowner=false
 
@@ -34,7 +37,7 @@ qemu-system-x86_64 \
 -cpu core2duo \
 -machine q35 \
 -serial mon:stdio \
--m 512 \
+-m 2048 \
 -netdev tap,id=net0 \
 -net nic,model=e1000,netdev=net0,macaddr=$macaddr \
 -cdrom "$image"
