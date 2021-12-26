@@ -55,7 +55,7 @@ install_config {
 			<policy label_prefix="lwip_hello" domain="downlink"/>
 			<policy label_prefix="drivers"           domain="uplink"/>
 
-			<domain name="uplink">
+			<domain name="uplink" interface="172.20.0.25/16">
 
 				<nat domain="downlink"
 				     tcp-ports="16384"
@@ -100,6 +100,3 @@ install_config {
 </config>
 }
 build_boot_image { lwip_hello }
-append qemu_args "-nographic -m 512"
-append_qemu_nic_args "hostfwd=tcp::5555-:80"
-run_genode_until forever

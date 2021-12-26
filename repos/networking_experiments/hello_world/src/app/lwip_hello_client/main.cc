@@ -5,40 +5,72 @@
 #include <netinet/in.h> // in_addr
 #include <stdio.h>      // puts
 #include <arpa/inet.h>  // inet_pton
+#include <errno.h>
+#include <netinet/tcp.h>
+#include "shared_constants.h"
+
+const char SERVER_IP[] = "172.20.0.25";
+const uint32_t TRANS_COUNT = 127;
+char buf[CHUNK_SIZE];
 
 void spam(Libc::Env &env)
 {
+    // Create socket
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock != 0)
-        puts("sock created");
+    if (0 == sock)
+        env.parent().exit(-1);
+
+    // Try to set sockopts to avoid concatetanion of
+    // payload chunks into one segment
+    // (not working with lwip seemingly)
+    int res = setsockopt(sock, IPPROTO_TCP, TCP_MSS, &CHUNK_SIZE, sizeof(CHUNK_SIZE));
+    printf("res: %d\n", res);
+    printf("errno: %d\n", errno);
+
+    int flag = 1;
+    res = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
+    printf("res: %d\n", res);
+    printf("errno: %d\n", errno);
+
+    puts("Socket created");
 
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
-    inet_pton(AF_INET, "172.20.0.17", &serv_addr.sin_addr.s_addr);
-    serv_addr.sin_port = htons(80);
+    inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr.s_addr);
+    serv_addr.sin_port = htons(SERVER_PORT);
 
-    int res = connect(sock, (const sockaddr *)&serv_addr, sizeof(serv_addr));
-
-    if (res == 0)
-        puts("sock connected");
+    // Connect
+    if (0 == connect(sock, (sockaddr *)&serv_addr, sizeof(serv_addr)))
+        puts("Socket connected");
     else
         env.parent().exit(-1);
 
-    for (int i = 0; i < 10; i++)
+    // Negotiate payload length
+    int32_t conv = htonl(TRANS_COUNT);
+    *(int32_t *)buf = conv;
+    printf("Sending count of expected data chunks %x \n", conv);
+    if (send(sock, &buf, CHUNK_SIZE, 0) == -1)
     {
-        puts("loop pass");
+        printf("Failed sending count of expected data chunks, error: %d \n", errno);
+    }
 
-        char buf[1024] = "asdasd";
+    // Sending payload
+    for (int i = 0; i < TRANS_COUNT; i++)
+    {
+        printf("Transmitting item %d out of %d \n", i, TRANS_COUNT);
 
-        if (send(sock, buf, 1024, 0) == -1)
-        {
-            puts("send failed");
-        }
-        if (read(sock, buf, 1024) == -1)
-        {
-            puts("recv failed");
-        }
+        sprintf(buf, "Item %d", i);
         puts(buf);
+
+        if (send(sock, buf, CHUNK_SIZE, 0) == -1)
+        {
+            puts("Send failed. Exitting...");
+            env.parent().exit(-1);
+        }
+
+        usleep(500000);
+        // TCP_NODELAY and TCP_MSS seem to be not working, so
+        // I added pause between transmissions
     }
 }
 
