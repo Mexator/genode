@@ -50,11 +50,7 @@ install_config {
 			<service name="Nic"/>
 			<service name="Uplink"/>
 		</provides>
-		<config verbose="yes"
-          verbose_packets="yes"
-          verbose_domain_state="yes"
-		  dhcp_discover_timeout_sec="1"
-          verbose_packet_drop="yes">
+		<config dhcp_discover_timeout_sec="1">
 
 			<policy label_prefix="lwip_hello" domain="downlink"/>
 			<policy label_prefix="drivers"           domain="uplink"/>
