@@ -63,7 +63,7 @@ void serve(Libc::Env &env)
 
         // Receive payload
 
-        for (int i = 0; i < payload_count; i++)
+        for (int i = 1; i <= payload_count; i++)
         {
             read(client, receive_buf, CHUNK_SIZE);
             puts("Received:");

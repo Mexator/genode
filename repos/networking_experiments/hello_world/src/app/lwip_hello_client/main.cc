@@ -10,7 +10,7 @@
 #include "shared_constants.h"
 
 const char SERVER_IP[] = "172.20.0.25";
-const uint32_t TRANS_COUNT = 127;
+const uint32_t TRANS_COUNT = 16;
 char buf[CHUNK_SIZE];
 
 void spam(Libc::Env &env)
@@ -22,13 +22,9 @@ void spam(Libc::Env &env)
 
     // Try to set sockopts to avoid concatetanion of
     // payload chunks into one segment
-    // (not working with lwip seemingly)
-    int res = setsockopt(sock, IPPROTO_TCP, TCP_MSS, &CHUNK_SIZE, sizeof(CHUNK_SIZE));
-    printf("res: %d\n", res);
-    printf("errno: %d\n", errno);
-
+    // (I use it wrong seemingly)
     int flag = 1;
-    res = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
+    int res = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
     printf("res: %d\n", res);
     printf("errno: %d\n", errno);
 
@@ -55,12 +51,11 @@ void spam(Libc::Env &env)
     }
 
     // Sending payload
-    for (int i = 0; i < TRANS_COUNT; i++)
+    for (int i = 1; i <= TRANS_COUNT; i++)
     {
         printf("Transmitting item %d out of %d \n", i, TRANS_COUNT);
 
         sprintf(buf, "Item %d", i);
-        puts(buf);
 
         if (send(sock, buf, CHUNK_SIZE, 0) == -1)
         {
@@ -68,14 +63,17 @@ void spam(Libc::Env &env)
             env.parent().exit(-1);
         }
 
+        // TCP_NODELAY seem to be not doing what I want it to do
+        // (segments are glued together), so I added pause
+        // between transmissions
         usleep(500000);
-        // TCP_NODELAY and TCP_MSS seem to be not working, so
-        // I added pause between transmissions
     }
+    close(sock);
 }
 
 void Libc::Component::construct(Libc::Env &env)
 {
     with_libc([&]()
               { spam(env); });
+    env.parent().exit(0);
 }
