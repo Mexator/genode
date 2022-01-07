@@ -21,13 +21,14 @@ is following:
   Steps to run:
     - Open the XML file with editor and find line that defines CDROM.
     - Add `<source file='path/to/iso'>` tag inside of `<disk ... cdrom'>`
+    - Change MAC address to be unique if you want proper networking
     - Open virsh as superuser
     - Run `create path/to/xml --console`
 
   To shutdown the VM use `destroy` command. For whatever reason Genode does not
   reacts to `shutdown` command with any arguments.
 
-- [] Successfully Run the lwip_hello scenario.
+- [x] Successfully Run the lwip_hello scenario.
   
   ISSUES:
     - platform-drv reports error not seen previously: 
@@ -39,3 +40,6 @@ is following:
 
     - Host should have static IP, but it is not pingable, with ICMP and with 
     telnet. Seems like newly created interfaces does not attch to br0.
+    
+    **SOLVED: migrating VM to older x86_64 arch fixed the issues: Now server
+    properly listens and the error is gone**
