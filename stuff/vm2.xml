@@ -1,5 +1,5 @@
  <domain type='kvm'>
-  <name>aboba</name>
+  <name>aboba-cli</name>
   <memory unit='KiB'>1048576</memory>
   <currentMemory unit='KiB'>1048576</currentMemory>
   <vcpu placement='static'>1</vcpu>
@@ -25,22 +25,16 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file="/home/anton/thesis-work/run/genode/build/x86_64/var/run/lwip_hello.iso" index="1"/>
+      <source file="/home/anton/thesis-work/run/genode/build/x86_64/var/run/lwip_hello_client.iso" index="1"/>
       <target dev='sda'/>
       <readonly/>
       <address type='drive' controller='0' bus='0' target='0' unit='0'/>
-    </disk>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file="/home/anton/thesis-work/run/genode/stuff/serv.qcow2"/>
-      <target dev='sdb'/>
     </disk>
     
     <controller type='virtio-serial' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </controller>
     <interface type='ethernet'>
-      <mac address='52:54:00:4e:33:d4'/>
       <model type='e1000'/>
       <script path='/etc/qemu-ifup'/>
     </interface>
