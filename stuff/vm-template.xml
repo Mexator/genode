@@ -1,5 +1,5 @@
  <domain type='kvm'>
-  <name>aboba</name>
+  <name>$VM_DOMAIN_NAME</name>
   <memory unit='KiB'>1048576</memory>
   <currentMemory unit='KiB'>1048576</currentMemory>
   <vcpu placement='static'>1</vcpu>
@@ -25,14 +25,14 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file="/home/anton/thesis-work/run/genode/build/x86_64/var/run/lwip_hello.iso" index="1"/>
+      <source file="$DISK_FILE" index="1"/>
       <target dev='sda'/>
       <readonly/>
       <address type='drive' controller='0' bus='0' target='0' unit='0'/>
     </disk>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
-      <source file="/home/anton/thesis-work/run/genode/stuff/serv.qcow2"/>
+      <source file="$SNAPSHOT_FILE"/>
       <target dev='sdb'/>
     </disk>
     
