@@ -65,8 +65,8 @@ void serve(Libc::Env &env)
 
         for (int i = 1; i <= payload_count; i++)
         {
-            read(client, receive_buf, CHUNK_SIZE);
-            puts("Received:");
+            int res = read(client, receive_buf, CHUNK_SIZE);
+            printf("Read returned %d, Received data: \n", res);
             puts(receive_buf);
         }
         close(client);
