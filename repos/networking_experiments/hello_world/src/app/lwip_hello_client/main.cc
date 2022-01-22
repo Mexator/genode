@@ -57,10 +57,16 @@ void spam(Libc::Env &env)
 
         sprintf(buf, "Item %d", i);
 
-        if (send(sock, buf, CHUNK_SIZE, 0) == -1)
+        int sendres = send(sock, buf, CHUNK_SIZE, 0);
+
+        if (-1 == sendres)
         {
             puts("Send failed. Exitting...");
             env.parent().exit(-1);
+        }
+        else
+        {
+            printf("Send returned %d \n", sendres);
         }
 
         // TCP_NODELAY seem to be not doing what I want it to do
@@ -75,5 +81,4 @@ void Libc::Component::construct(Libc::Env &env)
 {
     with_libc([&]()
               { spam(env); });
-    env.parent().exit(0);
 }

@@ -7,6 +7,7 @@ import_from_depot [depot_user]/src/[base_src] \
                   [depot_user]/src/nic_router \
                   [depot_user]/src/libc \
                   [depot_user]/src/vfs_lwip \
+                  [depot_user]/src/vfs_lxip \
                   [depot_user]/src/vfs
 
 install_config {
@@ -34,7 +35,7 @@ install_config {
 	</start>
 
 	<start name="drivers" caps="1000" managing_system="yes" priority="-1">
-		<resource name="RAM" quantum="32M"/>
+		<resource name="RAM" quantum="320M"/>
 		<binary name="init"/>
 		<route>
 			<service name="ROM" label="config"> <parent label="drivers.config"/> </service>
@@ -45,7 +46,7 @@ install_config {
 	</start>
 
     <start name="nic_router" caps="200">
-		<resource name="RAM" quantum="10M"/>
+		<resource name="RAM" quantum="100M"/>
 		<provides>
 			<service name="Nic"/>
 			<service name="Uplink"/>
@@ -82,7 +83,7 @@ install_config {
 	</start>
 
     <start name="lwip_hello_client" caps="120" priority="-1">
-        <resource name="RAM" quantum="10M"/>
+        <resource name="RAM" quantum="100M"/>
         <route>
 			<service name="Nic"> <child name="nic_router"/> </service>
 			<any-service> <parent/> <any-child/> </any-service>
