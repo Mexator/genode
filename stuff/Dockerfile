@@ -78,19 +78,19 @@ RUN curl -s -L -o ${GENODE_FILE} ${GENODE_URL}/tarball/${GENODE_BRANCH} && \
 # My own steps
 #
 
-# Copy prebuilt netperf
-COPY netperf-2.6.0 /usr/local/bin
-
 # Install additional packages for convenient debugging and building some
 # targets
 RUN apt update 								&& \
-    apt install -y iproute2 gperf
+    apt install -y iproute2 gperf xauth xterm
 
 # Copy aclocal and automake so that coreutils build won't fail. 
 RUN cp /usr/bin/aclocal-1.16 /usr/bin/aclocal-1.15			&& \
     cp /usr/bin/automake-1.16 /usr/bin/automake-1.15
 
-
 # Add user for non-root access
 RUN adduser --disabled-password --uid 1000 --shell /bin/bash --home /root/user anton
 USER anton
+
+# Copy prebuilt netperf
+COPY genode/netperf-2.6.0 /usr/local/bin
+

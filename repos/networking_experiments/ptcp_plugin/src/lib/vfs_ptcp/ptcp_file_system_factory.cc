@@ -3,14 +3,11 @@
 //
 
 #include <vfs/file_system_factory.h>
-#include <timer_session/connection.h>
 
-extern "C" Vfs::File_system_factory *vfs_file_system_factory(void)
+extern "C" Vfs::File_system_factory *vfs_file_system1_factory(void)
 {
     struct Factory : Vfs::File_system_factory
     {
-        Genode::Constructible<Timer::Connection> timer { };
-
         Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override
         {
             Genode::error("dummy create called");

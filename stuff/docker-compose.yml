@@ -6,9 +6,14 @@ services:
     volumes: 
       - ./genode:/genode
       - ./root:/root
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ~/.Xauthority:/root/user/.Xauthority
     stdin_open: true # docker run -i
     tty: true        # docker run -t
     cap_add: 
       - NET_ADMIN
     devices:
      - /dev/net/tun:/dev/net/tun
+    environment:
+      DISPLAY: $DISPLAY
+    network_mode: "host"
