@@ -25,6 +25,8 @@ qemu-system-x86_64 \
 -cpu core2duo \
 -machine q35 \
 -serial mon:stdio \
+-serial chardev:uart \
+-chardev socket,id=uart,port=5555,host=localhost,server,nowait,ipv4 \
 -m 2048 \
 -netdev tap,id=net0 \
 -net nic,model=e1000,netdev=net0,macaddr=$macaddr \

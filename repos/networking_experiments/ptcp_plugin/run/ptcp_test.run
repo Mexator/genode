@@ -1,4 +1,4 @@
-build "core init test/ptcp_test lib/vfs_ptcp"
+build "core test/ptcp_test lib/vfs_ptcp"
 create_boot_directory
 
 import_from_depot [depot_user]/src/[base_src] \
