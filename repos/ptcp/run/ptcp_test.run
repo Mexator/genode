@@ -44,4 +44,4 @@ install_config {
 
 </config>
 }
-build_boot_image {vfs.lib.so vfs_ptcp.lib.so ptcp_test vfs }
+build_boot_image {vfs_ptcp.lib.so ptcp_test }
