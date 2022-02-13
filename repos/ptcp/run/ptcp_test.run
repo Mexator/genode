@@ -1,22 +1,24 @@
-build "core test/ptcp_test lib/vfs_ptcp"
+build "core test/ptcp_test lib/vfs_ptcp lib/vfs/lwip"
 create_boot_directory
 
 import_from_depot [depot_user]/src/[base_src] \
+                  [depot_user]/pkg/[drivers_nic_pkg] \
                   [depot_user]/src/init \
-                  [depot_user]/src/libc
+                  [depot_user]/src/libc \
+                  [depot_user]/src/nic_router
 
 install_config {
 <config verbose="yes" prio_levels="2">
     <parent-provides>
-		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO_MEM"/>
-		<service name="IO_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
-		<service name="CPU"/>
-		<service name="LOG"/>
-	</parent-provides>
+        <service name="ROM"/>
+        <service name="IRQ"/>
+        <service name="IO_MEM"/>
+        <service name="IO_PORT"/>
+        <service name="PD"/>
+        <service name="RM"/>
+        <service name="CPU"/>
+        <service name="LOG"/>
+    </parent-provides>
 
     <default-route>
         <any-service> <parent/> <any-child/> </any-service>
@@ -24,24 +26,78 @@ install_config {
     
     <default caps="100"/>
 
-    <start name="vfs">
-        <resource name="RAM" quantum="10M"/>
+    <start name="timer">
+        <resource name="RAM" quantum="2M"/>
+        <provides> <service name="Timer"/> </provides>
     </start>
 
-    <start name="ptcp_test" caps="120" priority="-1">
-        <resource name="RAM" quantum="10M"/>
+    <start name="drivers" caps="1000" managing_system="yes" priority="-1">
+        <resource name="RAM" quantum="320M"/>
+        <binary name="init"/>
         <route>
-			<any-service> <parent/> <any-child/> </any-service>
-		</route>
+            <service name="ROM" label="config"> <parent label="drivers.config"/> </service>
+            <service name="Timer"> <child name="timer"/> </service>
+            <service name="Uplink"> <child name="nic_router"/> </service>
+            <any-service> <parent/> </any-service>
+            </route>
+    </start>
+
+    <start name="nic_router" caps="200">
+        <resource name="RAM" quantum="100M"/>
+        <provides>
+            <service name="Nic"/>
+            <service name="Uplink"/>
+        </provides>
+        <config dhcp_discover_timeout_sec="1">
+
+        <policy label_prefix="ptcp_test" domain="downlink"/>
+        <policy label_prefix="drivers"           domain="uplink"/>
+
+        <domain name="uplink">
+
+            <nat domain="downlink"
+                 tcp-ports="16384"
+                 udp-ports="16384"
+                 icmp-ids="16384"/>
+
+            <tcp-forward port="80"  domain="downlink" to="10.0.3.2"/>
+
+        </domain>
+
+        <domain name="downlink" interface="10.0.3.1/24">
+
+            <dhcp-server ip_first="10.0.3.2"
+                         ip_last="10.0.3.2"
+                         dns_config_from="uplink"/>
+
+            <tcp dst="0.0.0.0/0"><permit-any domain="uplink" /></tcp>
+            <udp dst="0.0.0.0/0"><permit-any domain="uplink" /></udp>
+            <icmp dst="0.0.0.0/0" domain="uplink"/>
+
+        </domain>
+        </config>
+    </start>
+
+    <start name="ptcp_test" caps="1200" priority="-1">
+        <resource name="RAM" quantum="100M"/>
+        <route>
+            <service name="Nic"> <child name="nic_router"/> </service>
+            <any-service> <parent/> <any-child/> </any-service>
+        </route>
         <config  verbose="yes" ld_verbose="yes" >
-			<vfs>
-				<dir name="dev">    <log/>             </dir>
-				<dir name="socket"> <ptcp ass="12"/> </dir>
-			</vfs>
-			<libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
-		</config>
+            <vfs>
+                <dir name="dev">    <log/>             </dir>
+                <dir name="socket"> <lwip_dl dhcp="yes"/> </dir>
+            </vfs>
+            <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
+        </config>
     </start>
 
 </config>
 }
-build_boot_image {vfs_ptcp.lib.so ptcp_test }
+
+build_boot_image {
+    lwip_dl.lib.so vfs.lib.so
+    vfs_lwip.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
+    ptcp_test
+}
