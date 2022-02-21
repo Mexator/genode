@@ -1,4 +1,4 @@
-build "core test/ptcp_test lib/vfs_ptcp lib/vfs/lwip"
+build "core test/ptcp_test lib/vfs_ptcp lib/vfs/lwip snapshot_notifier"
 create_boot_directory
 
 import_from_depot [depot_user]/src/[base_src] \
@@ -39,7 +39,7 @@ install_config {
             <service name="Timer"> <child name="timer"/> </service>
             <service name="Uplink"> <child name="nic_router"/> </service>
             <any-service> <parent/> </any-service>
-            </route>
+        </route>
     </start>
 
     <start name="nic_router" caps="200">
@@ -78,16 +78,26 @@ install_config {
         </config>
     </start>
 
+    <start name="snapshot_notifier" caps="100">
+        <resource name="RAM" quantum="5M"/>
+        <route>
+            <any-service> <parent/> <any-child/> </any-service>
+            <service name="Timer"> <child name="timer"/> </service>
+        </route>
+        <provides> <service name="SIG_SNAP"/> </provides>
+    </start>
+
     <start name="ptcp_test" caps="1200" priority="-1">
         <resource name="RAM" quantum="100M"/>
         <route>
             <service name="Nic"> <child name="nic_router"/> </service>
+            <service name="SIG_SNAP"> <child name="snapshot_notifier"/> </service>
             <any-service> <parent/> <any-child/> </any-service>
         </route>
         <config  verbose="yes" ld_verbose="yes" >
             <vfs>
                 <dir name="dev">    <log/>             </dir>
-                <dir name="socket"> <lwip_dl dhcp="yes"/> </dir>
+                <dir name="socket"> <ptcp dhcp="yes"/> </dir>
             </vfs>
             <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
         </config>
@@ -99,5 +109,5 @@ install_config {
 build_boot_image {
     lwip_dl.lib.so vfs.lib.so
     vfs_lwip.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
-    ptcp_test
+    ptcp_test snapshot_notifier
 }

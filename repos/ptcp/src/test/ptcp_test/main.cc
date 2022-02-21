@@ -22,7 +22,7 @@ void test() {
     if (0 != bind(sock, (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
 
-    Genode::log("test: tcp_bound_pcbs value. If it is not 0x0, test is OK", tcp_bound_pcbs);
+    Genode::log("test: tcp_bound_pcbs->local_port. If it is 80, test is OK\n", tcp_bound_pcbs->local_port);
 }
 
 void Libc::Component::construct(Libc::Env &env) {
