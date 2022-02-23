@@ -2,6 +2,7 @@
 #include <base/component.h>
 #include <base/connection.h>
 #include <snapshot_notifier/session.h>
+#include <vfs_ptcp/snapshot.h>
 
 namespace Ptcp {
     struct Session_client;
@@ -36,7 +37,14 @@ struct Ptcp::Signals_entrypoint {
     };
 
     void do_snapshot() {
-        Genode::error("do_snapshot() not implemented yet");
+        Genode::log("do_snapshot() of client called");
+        Lwip_snapshot a = form_snapshot();
+        if (tcp_pcb *bound = a.tcp_bound_pcbs) {
+            Genode::log("do_snapshot: tcp_bound_pcbs->local_port. If it is 80, test is OK\n",
+                        bound->local_port);
+        } else {
+            Genode::log("bound is nullptr");
+        }
     }
 };
 
