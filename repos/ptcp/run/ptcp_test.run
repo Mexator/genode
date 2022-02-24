@@ -1,13 +1,28 @@
-build "core test/ptcp_test lib/vfs_ptcp lib/vfs/lwip snapshot_notifier"
+set build_components {
+    lib/vfs_ptcp
+    snapshot_notifier
+    test/ptcp_test
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+build $build_components
+
 create_boot_directory
 
 import_from_depot [depot_user]/src/[base_src] \
                   [depot_user]/pkg/[drivers_nic_pkg] \
                   [depot_user]/src/init \
                   [depot_user]/src/libc \
-                  [depot_user]/src/nic_router
+                  [depot_user]/src/nic_router \
+                  [depot_user]/src/platform_drv \
+                  [depot_user]/src/report_rom \
+                  [depot_user]/src/acpi_drv \
+                  [depot_user]/src/ahci_drv \
+                  [depot_user]/src/rump \
+                  [depot_user]/src/vfs
 
-install_config {
+append config {
 <config verbose="yes" prio_levels="2">
     <parent-provides>
         <service name="ROM"/>
@@ -86,28 +101,51 @@ install_config {
         </route>
         <provides> <service name="SIG_SNAP"/> </provides>
     </start>
+}
+
+append_platform_drv_config
+
+append config {
+    <start name="report_rom">
+        <resource name="RAM" quantum="1M"/>
+        <provides> <service name="Report"/> <service name="ROM"/> </provides>
+    </start>
+
+    <start name="ahci_drv">
+        <resource name="RAM" quantum="10M" />
+        <provides> <service name="Block" /> </provides>
+        <config>
+            <report ports="yes"/>
+            <policy label_prefix="ptcp_test" root="/test" device="0" writeable="yes"/>
+        </config>
+        <route>
+            <service name="Report"> <child name="report_rom"/> </service>
+            <any-service> <parent/> <any-child /> </any-service>
+        </route>
+    </start>
 
     <start name="ptcp_test" caps="1200" priority="-1">
         <resource name="RAM" quantum="100M"/>
         <route>
             <service name="Nic"> <child name="nic_router"/> </service>
             <service name="SIG_SNAP"> <child name="snapshot_notifier"/> </service>
+            <service name="Block"> <child name="ahci_drv"/> </service>
             <any-service> <parent/> <any-child/> </any-service>
         </route>
         <config  verbose="yes" ld_verbose="yes" >
             <vfs>
+                <dir name="test"> <rump fs="ext2fs" ram="10M"/> </dir>
                 <dir name="dev">    <log/>             </dir>
                 <dir name="socket"> <ptcp dhcp="yes"/> </dir>
             </vfs>
             <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
         </config>
     </start>
-
 </config>
 }
 
+install_config $config
 build_boot_image {
-    lwip_dl.lib.so vfs.lib.so
-    vfs_lwip.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
+    lwip_dl.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
     ptcp_test snapshot_notifier
 }

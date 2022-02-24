@@ -81,7 +81,7 @@ RUN curl -s -L -o ${GENODE_FILE} ${GENODE_URL}/tarball/${GENODE_BRANCH} && \
 # Install additional packages for convenient debugging and building some
 # targets
 RUN apt update 								&& \
-    apt install -y iproute2 gperf xauth xterm
+    apt install -y iproute2 gperf xauth xterm gdb subversion
 
 # Copy aclocal and automake so that coreutils build won't fail. 
 RUN cp /usr/bin/aclocal-1.16 /usr/bin/aclocal-1.15			&& \
