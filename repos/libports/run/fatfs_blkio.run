@@ -91,7 +91,7 @@ append_if $use_ahci config {
 			<any-service> <parent /> <any-child /></any-service>
 		</route>
 		<config>
-			<policy label_prefix="test-fatfs_block_io" device="0"/>
+			<policy label_prefix="test-fatfs_block_io" device="0" writeable="yes"/>
 		</config>
 	</start>}
 
