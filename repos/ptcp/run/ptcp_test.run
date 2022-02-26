@@ -13,7 +13,6 @@ create_boot_directory
 import_from_depot [depot_user]/src/[base_src] \
                   [depot_user]/pkg/[drivers_nic_pkg] \
                   [depot_user]/src/init \
-                  [depot_user]/src/libc \
                   [depot_user]/src/nic_router \
                   [depot_user]/src/platform_drv \
                   [depot_user]/src/report_rom \
@@ -146,6 +145,7 @@ append config {
 
 install_config $config
 build_boot_image {
+    libc.lib.so libm.lib.so stdcxx.lib.so
     lwip_dl.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
     ptcp_test snapshot_notifier
 }
