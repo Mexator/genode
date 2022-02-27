@@ -3,6 +3,8 @@
 #include <base/connection.h>
 #include <snapshot_notifier/session.h>
 #include <vfs_ptcp/snapshot.h>
+#include <vfs_ptcp/persist.h>
+#include <libc/component.h>
 
 namespace Ptcp {
     struct Session_client;
@@ -11,7 +13,7 @@ namespace Ptcp {
 }
 
 struct Ptcp::Session_client : Genode::Rpc_client<Snapshot_notifier::Session> {
-    explicit Session_client(Genode::Capability<Snapshot_notifier::Session> cap)
+    explicit Session_client(const Genode::Capability<Snapshot_notifier::Session> &cap)
             : Genode::Rpc_client<Snapshot_notifier::Session>(cap) {}
 
     void add_handler(Genode::Signal_context_capability cap) override {
@@ -38,13 +40,12 @@ struct Ptcp::Signals_entrypoint {
 
     void do_snapshot() {
         Genode::log("do_snapshot() of client called");
-        Lwip_snapshot a = form_snapshot();
-        if (tcp_pcb *bound = a.tcp_bound_pcbs) {
-            Genode::log("do_snapshot: tcp_bound_pcbs->local_port. If it is 80, test is OK\n",
-                        bound->local_port);
-        } else {
-            Genode::log("bound is nullptr");
-        }
+        Libc::with_libc([&] {
+            Snapshot::Composed_state state = Snapshot::form_snapshot();
+            Genode::log("do_snapshot(): state formed");
+            persist_saved_state(state);
+            Genode::log("Saved state of ", state.libc_state.sockets_number, " sockets");
+        });
     }
 };
 

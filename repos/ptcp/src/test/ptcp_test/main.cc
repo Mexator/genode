@@ -20,25 +20,16 @@ void test() {
 
     if (0 != bind(sock, (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
+
+    in_addr.sin_port = htons(85);
+    int sock2 = socket(AF_INET, SOCK_DGRAM, 0);
+    if (0 != bind(sock2, (struct sockaddr *) &in_addr, sizeof(in_addr)))
+        Genode::error("while calling bind()");
 }
 
 void Libc::Component::construct(Libc::Env &env) {
     with_libc([&]() {
         puts("hello world");
-        // test persistent storage
-        int desc = open("/test/file", O_RDWR | O_CREAT);
-        Genode::log("file opened", desc, " ", errno);
-
-        int r = write(desc, "hello hello!!", 14);
-        fsync(desc);
-        Genode::log("write finished", r, " ", errno);
-
-        char a[125] = "";
-        r = read(desc, a, 125);
-        Genode::log("read finished", r, " ", errno, " ");
-        puts(a);
-        puts("a");
-        puts(a);
 
         //test ptcp as a networked plugin
         test();

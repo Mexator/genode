@@ -115,7 +115,7 @@ append config {
         <provides> <service name="Block" /> </provides>
         <config>
             <report ports="yes"/>
-            <policy label_prefix="ptcp_test" root="/test" device="0" writeable="yes"/>
+            <policy label_prefix="ptcp_test" root="/snapshot" device="0" writeable="yes"/>
         </config>
         <route>
             <service name="Report"> <child name="report_rom"/> </service>
@@ -133,7 +133,7 @@ append config {
         </route>
         <config  verbose="yes" ld_verbose="yes" >
             <vfs>
-                <dir name="test"> <rump fs="ext2fs" ram="10M"/> </dir>
+                <dir name="snapshot"> <rump fs="ext2fs" ram="10M"/> </dir>
                 <dir name="dev">    <log/>             </dir>
                 <dir name="socket"> <ptcp dhcp="yes"/> </dir>
             </vfs>

@@ -44,6 +44,7 @@
 #include <internal/suspend.h>
 #include <internal/pthread.h>
 #include <internal/unconfirmed.h>
+#include <internal/snapshot/socket_snapshot.h>
 
 
 namespace Libc {
@@ -964,6 +965,14 @@ extern "C" int socket_fs_getsockopt(int libc_fd, int level, int optname,
 			case Socket_fs::Context::Proto::TCP: *(int *)optval = SOCK_STREAM; break;
 			}
 			return 0;
+        case SO_INTERNAL_STATE:
+            *(socket_state*) optval = socket_state {
+                context->proto(), context->state()
+            };
+            if (*optlen < sizeof (socket_state)) {
+                *optlen = sizeof (socket_state);
+            }
+            return 0;
 		default: return Errno(ENOPROTOOPT);
 		}
 
