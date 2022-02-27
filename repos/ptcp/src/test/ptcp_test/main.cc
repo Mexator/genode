@@ -9,8 +9,9 @@
 #include <errno.h>
 #include <libc-plugin/fd_alloc.h>
 #include <list>
+#include <pthread.h>
 
-void test() {
+void _main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in in_addr;
@@ -25,41 +26,16 @@ void test() {
     int sock2 = socket(AF_INET, SOCK_DGRAM, 0);
     if (0 != bind(sock2, (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
+
+    while(true){
+        ;
+    }
 }
 
 void Libc::Component::construct(Libc::Env &env) {
+
     with_libc([&]() {
-        puts("hello world");
-
-        //test ptcp as a networked plugin
-        test();
-
-        // test get all files
-        Genode::log("Opened file descriptors:");
-
-        std::list<int> fds = {};
-        file_descriptor_allocator()->idSpace().for_each<File_descriptor>([&fds](File_descriptor &fd) {
-            fds.push_back(fd.libc_fd);
-        });
-
-        for (const int &item: fds) {
-            struct sockaddr addr = {};
-            socklen_t len = sizeof(sockaddr);
-
-            if (-1 == getsockname(item, &addr, &len)) {
-                switch (errno) {
-                    case EBADF:
-                        Genode::log("FD ", item, " does not belongs to libc socket plugin");
-                        break;
-                    case ENOTSOCK:
-                        Genode::log("FD ", item, " is not a socket");
-                        break;
-                    default:
-                        Genode::log("Unknown error, errno = ", errno);
-                }
-            } else {
-                Genode::log("FD ", item, " is a socket with address family ", addr.sa_family);
-            }
-        }
+        pthread_t t;
+        pthread_create(&t, nullptr, (void *(*)(void *))(_main), nullptr);
     });
 }
