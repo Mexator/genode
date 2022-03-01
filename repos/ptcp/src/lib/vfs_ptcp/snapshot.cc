@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <list>
 
+#include <lwip/priv/tcp_priv.h>
+
 typedef Libc::File_descriptor File_descriptor;
 
 void log_wrong_fd(int err, int libc_fd);
@@ -11,6 +13,7 @@ using namespace Ptcp::Snapshot;
 
 struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot() {
 
+    // save libc
     std::list<int> fds = {};
     Libc::file_descriptor_allocator()->idSpace().for_each<File_descriptor>([&fds](File_descriptor &fd) {
         fds.push_back(fd.libc_fd);
@@ -40,6 +43,9 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot() {
             Libc_plugin_state{
                     arr,
                     static_cast<size_t>(states.size())
+            },
+            Lwip_state {
+                    tcp_bound_pcbs
             }
     };
 }
