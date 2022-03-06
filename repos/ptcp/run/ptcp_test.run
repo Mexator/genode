@@ -67,7 +67,7 @@ append config {
         <policy label_prefix="ptcp_test" domain="downlink"/>
         <policy label_prefix="drivers"           domain="uplink"/>
 
-        <domain name="uplink">
+        <domain name="uplink" interface="172.20.0.25/16">
 
             <nat domain="downlink"
                  tcp-ports="16384"

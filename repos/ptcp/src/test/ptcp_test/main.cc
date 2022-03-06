@@ -8,10 +8,17 @@
 #include <unistd.h>
 #include <errno.h>
 #include <libc-plugin/fd_alloc.h>
-#include <list>
 #include <pthread.h>
 
 void _main() {
+    int snapshot = open("/socket/fd_mapping", O_RDONLY);
+
+    char buf[1024];
+    int res = read(snapshot, buf, 1024);
+    Genode::warning("snapshot: read returned ", res);
+    Genode::log("Fd_mapping:");
+    puts(buf);
+
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in in_addr;
@@ -27,8 +34,14 @@ void _main() {
     if (0 != bind(sock2, (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
 
-    while(true){
-        ;
+    listen(sock, 1);
+
+    while (true) {
+        struct sockaddr_in in_addr2;
+        socklen_t sock_len = sizeof(sockaddr_in);
+        accept(sock, (sockaddr *) &in_addr2, &sock_len);
+        Genode::log("accepted", in_addr2.sin_addr.s_addr);
+        sleep(1);
     }
 }
 
@@ -36,6 +49,6 @@ void Libc::Component::construct(Libc::Env &env) {
 
     with_libc([&]() {
         pthread_t t;
-        pthread_create(&t, nullptr, (void *(*)(void *))(_main), nullptr);
+        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
     });
 }

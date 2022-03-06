@@ -3,21 +3,37 @@
 #include <vfs/file_system_factory.h>
 
 #include <vfs_ptcp/sig_handlers.h>
+#include <vfs_ptcp/load.h>
+#include <vfs_ptcp/lwip_wrapper.h>
 
 extern "C" Vfs::File_system_factory *vfs_file_system_factory(void) {
 
     struct Factory : Vfs::File_system_factory {
         Vfs::File_system_factory *lwip_factory = nullptr;
 
-        Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override {
-            setup_sig_handlers(vfs_env.env());
-
+        Vfs::File_system_factory *get_lwip_factory(Vfs::Env &vfs_env) {
             if (lwip_factory == nullptr)
                 load_lwip_factory(vfs_env.env());
-            return lwip_factory->create(vfs_env, config);
+            return lwip_factory;
         }
 
-    private:
+        Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override {
+            Vfs::File_system *lwip_fs = get_lwip_factory(vfs_env)->create(vfs_env, config);
+
+            Ptcp::Vfs_wrapper *wrapper = new(vfs_env.alloc()) Ptcp::Vfs_wrapper(vfs_env, *lwip_fs);
+
+            // Create load manager
+            Ptcp::Snapshot::Load_manager manager{vfs_env.alloc()};
+            // Load snapshot from disk
+            manager.load_saved_state();
+            // Use wrapper to restore state
+            manager.inject_state(*wrapper);
+
+            setup_sig_handlers(vfs_env.env());
+
+            return wrapper;
+        }
+
         // XXX: I think this is a shitty approach to load binary. I wish there was a better solution...
         void load_lwip_factory(Genode::Env &env) {
             Genode::Sliced_heap h(env.ram(), env.rm());

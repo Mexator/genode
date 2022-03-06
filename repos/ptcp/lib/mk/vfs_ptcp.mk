@@ -1,4 +1,5 @@
 LIBS += vfs_lwip_dl
+LIBS += vfs_collection
 LIBS += libc
 LIBS += stdcxx
 
@@ -11,9 +12,10 @@ LIBC_SRC_DIR := $(call select_from_repositories,src/lib/libc/) # should be libpo
 INC_DIR += $(LIBC_SRC_DIR)
 
 SRC_CC += file_system_factory.cc
-SRC_CC += snapshot.cc
+SRC_CC += load.cc
 SRC_CC += persist.cc
 SRC_CC += sig_handlers.cc
+SRC_CC += snapshot.cc
 
 PLUGIN_DIR = $(REP_DIR)/src/lib/vfs_ptcp
 vpath %.cc $(PLUGIN_DIR)
