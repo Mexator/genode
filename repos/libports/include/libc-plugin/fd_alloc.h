@@ -125,8 +125,6 @@ namespace Libc {
 			int any_open_fd();
 
 			void generate_info(Genode::Xml_generator &);
-
-            Id_space &idSpace() { return _id_space;};
 	};
 
 

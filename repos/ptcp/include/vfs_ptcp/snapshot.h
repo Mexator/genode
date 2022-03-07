@@ -5,7 +5,6 @@
 /**
  * Libc includes
  */
-#include <internal/snapshot/socket_snapshot.h>
 #include <cstdio>
 
 /**
@@ -14,31 +13,43 @@
 #define LWIP_NO_STDINT_H 0
 #define LWIP_NO_UNISTD_H 0
 #define SSIZE_MAX
+
 #include <lwip/tcp.h>
+#include <base/allocator.h>
 
 namespace Ptcp {
     namespace Snapshot {
-        struct Libc_plugin_state;
+        namespace Libc {
+            struct Plugin_state;
+            struct Socket_state;
+        }
+
         struct Lwip_state;
 
         struct Composed_state;
 
-        Composed_state form_snapshot();
+        Composed_state form_snapshot(Genode::Allocator &alloc);
     }
 }
 
 // Libc socket plugin state
-struct Ptcp::Snapshot::Libc_plugin_state {
-    socket_state *socket_states;
+struct Ptcp::Snapshot::Libc::Socket_state {
+    unsigned int proto;
+    unsigned int state;
+    unsigned long proxy_handle;
+};
+
+struct Ptcp::Snapshot::Libc::Plugin_state {
+    Socket_state *socket_states;
     size_t sockets_number;
 };
 
-struct Ptcp::Snapshot::Lwip_state{
-    tcp_pcb* bound_pcbs;
+struct Ptcp::Snapshot::Lwip_state {
+    tcp_pcb *bound_pcbs;
 };
 
 struct Ptcp::Snapshot::Composed_state {
-    Libc_plugin_state libc_state;
+    Libc::Plugin_state libc_state;
     Lwip_state lwip_state;
 };
 

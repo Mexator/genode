@@ -1,9 +1,5 @@
-//
-// Created by anton on 27.02.2022.
-//
-
-#ifndef GENODE_SOCKET_SNAPSHOT_H
-#define GENODE_SOCKET_SNAPSHOT_H
+#ifndef _PTCP_SOCKET_SNAPSHOT_H_
+#define _PTCP_SOCKET_SNAPSHOT_H_
 
 #define SO_INTERNAL_STATE 0x00000011
 
@@ -12,4 +8,4 @@ struct socket_state {
     unsigned int state;
 };
 
-#endif //GENODE_SOCKET_SNAPSHOT_H
+#endif //_PTCP_SOCKET_SNAPSHOT_H_

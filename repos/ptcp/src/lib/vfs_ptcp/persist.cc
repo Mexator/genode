@@ -22,12 +22,12 @@ void persist_saved_state(Ptcp::Snapshot::Composed_state state) {
 
     output << "libc" << endl;
 
-    Ptcp::Snapshot::Libc_plugin_state &libc_state = state.libc_state;
+    Ptcp::Snapshot::Libc::Plugin_state &libc_state = state.libc_state;
     output << libc_state.sockets_number << endl;
 
     for (size_t i = 0; i < libc_state.sockets_number; ++i) {
-        socket_state sock_state = libc_state.socket_states[i];
-        output << sock_state.proto << " " << sock_state.state << endl;
+        Ptcp::Snapshot::Libc::Socket_state sock_state = libc_state.socket_states[i];
+        output << sock_state.proxy_handle << " " << sock_state.proto << " " << sock_state.state << endl;
     }
 
     output << "lwip" << endl;

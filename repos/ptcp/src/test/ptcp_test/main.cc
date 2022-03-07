@@ -22,26 +22,26 @@ void _main(Libc::Env *env) {
         Genode::warning("Fd_proxy: Test succeded"); // Should be 2
     }
 
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    Ptcp::Fd_proxy::Fd_space::Id sock = proxy->register_fd(socket(AF_INET, SOCK_STREAM, 0));
     struct sockaddr_in in_addr;
     in_addr.sin_family = AF_INET;
     in_addr.sin_port = htons(80);
     in_addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (0 != bind(sock, (struct sockaddr *) &in_addr, sizeof(in_addr)))
+    if (0 != bind(proxy->map_fd(sock), (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
 
     in_addr.sin_port = htons(85);
-    int sock2 = socket(AF_INET, SOCK_DGRAM, 0);
-    if (0 != bind(sock2, (struct sockaddr *) &in_addr, sizeof(in_addr)))
+    Ptcp::Fd_proxy::Fd_space::Id sock2 = proxy->register_fd(socket(AF_INET, SOCK_DGRAM, 0));
+    if (0 != bind(proxy->map_fd(sock2), (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
 
-    listen(sock, 1);
+    listen(proxy->map_fd(sock), 1);
 
     while (true) {
         struct sockaddr_in in_addr2;
         socklen_t sock_len = sizeof(sockaddr_in);
-        accept(sock, (sockaddr *) &in_addr2, &sock_len);
+        accept(proxy->map_fd(sock), (sockaddr *) &in_addr2, &sock_len);
         Genode::log("accepted", in_addr2.sin_addr.s_addr);
         sleep(1);
     }

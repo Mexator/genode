@@ -9,6 +9,8 @@ namespace Ptcp {
     class Fd_proxy;
     namespace Snapshot {
         class Load_manager;
+        struct Composed_state;
+        Composed_state form_snapshot(Genode::Allocator &alloc);
     }
 
     Fd_proxy *get_fd_proxy(Genode::Allocator &alloc);
@@ -21,6 +23,7 @@ public:
     typedef Fd_space::Element Fd_element;
 private:
     friend class Ptcp::Snapshot::Load_manager;
+    friend Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allocator &alloc);
 
     // Wrapper to allow deleting of objects (see repos/libports/include/libc-plugin/fd_alloc.h)
     // I have a little idea how it works. But it does.

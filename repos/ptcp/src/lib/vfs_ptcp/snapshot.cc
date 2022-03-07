@@ -1,50 +1,59 @@
 #include <vfs_ptcp/snapshot.h>
-#include <libc-plugin/fd_alloc.h>
+#include <ptcp_client/fd_proxy.h>
 #include <errno.h>
 #include <list>
 
 #include <lwip/priv/tcp_priv.h>
-
-typedef Libc::File_descriptor File_descriptor;
-
-void log_wrong_fd(int err, int libc_fd);
+#include <internal/snapshot/socket_snapshot.h>
+#include <sys/socket.h>
 
 using namespace Ptcp::Snapshot;
 
-struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot() {
+void log_wrong_fd(int err, int libc_fd);
+
+struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allocator &alloc) {
+    typedef Ptcp::Fd_proxy::Fd_handle Fd_handle;
 
     // save libc
-    std::list<int> fds = {};
-    Libc::file_descriptor_allocator()->idSpace().for_each<File_descriptor>([&fds](File_descriptor &fd) {
-        fds.push_back(fd.libc_fd);
+    Ptcp::Fd_proxy *fd_proxy = Ptcp::get_fd_proxy(alloc);
+
+    std::list<Fd_handle *> fds = {};
+    fd_proxy->fd_space.for_each<Fd_handle>([&fds](Fd_handle &fd) {
+        fds.push_back(&fd);
     });
 
-    std::list<socket_state> states;
+    std::list<Libc::Socket_state> states;
 
-    for (const int &item: fds) {
+    for (auto &item: fds) {
         struct sockaddr addr = {};
         socklen_t len = sizeof(sockaddr);
 
-        if (0 == getsockname(item, &addr, &len)) {
-            Genode::log("FD ", item, " is a socket with address family ", addr.sa_family);
+        if (0 == getsockname(item->_libc_fd, &addr, &len)) {
+            Genode::log("FD ", item->_libc_fd, " is a socket with address family ", addr.sa_family);
 
             struct socket_state state = {};
             socklen_t state_len = sizeof(socket_state);
-            if (0 == getsockopt(item, SOL_SOCKET, SO_INTERNAL_STATE, &state, &state_len)) {
-                states.push_back(state);
+            if (0 == getsockopt(item->_libc_fd, SOL_SOCKET, SO_INTERNAL_STATE, &state, &state_len)) {
+
+                states.push_back(Libc::Socket_state{
+                        state.proto,
+                        state.state,
+                        item->elem.id().value
+                });
             }
         } else {
-            log_wrong_fd(errno, item);
+            log_wrong_fd(errno, item->_libc_fd);
         }
     }
-    socket_state *arr = new socket_state[states.size()];
+
+    Libc::Socket_state *arr = new Libc::Socket_state[states.size()];
     std::copy(states.begin(), states.end(), arr);
     return Composed_state{
-            Libc_plugin_state{
+            Libc::Plugin_state{
                     arr,
                     static_cast<size_t>(states.size())
             },
-            Lwip_state {
+            Lwip_state{
                     tcp_bound_pcbs
             }
     };
