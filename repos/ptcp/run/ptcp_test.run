@@ -147,5 +147,6 @@ install_config $config
 build_boot_image {
     libc.lib.so libm.lib.so stdcxx.lib.so
     lwip_dl.lib.so vfs_lwip_dl.lib.so vfs_ptcp.lib.so
+    ptcp_client.lib.so
     ptcp_test snapshot_notifier
 }

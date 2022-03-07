@@ -1,5 +1,6 @@
 LIBS += vfs_lwip_dl
 LIBS += vfs_collection
+LIBS += ptcp_client
 LIBS += libc
 LIBS += stdcxx
 

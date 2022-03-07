@@ -1,5 +1,4 @@
 #include <libc/component.h>
-#include <stdio.h>
 
 // socket api
 #include <netinet/in.h> // in_addr
@@ -9,18 +8,21 @@
 #include <errno.h>
 #include <libc-plugin/fd_alloc.h>
 #include <pthread.h>
+#include <ptcp_client/fd_proxy.h>
+#include <base/heap.h>
 
-void _main() {
-    int snapshot = open("/socket/fd_mapping", O_RDONLY);
+void _main(Libc::Env *env) {
+    static Genode::Heap heap(env->ram(), env->rm());
+    Ptcp::Fd_proxy *proxy = Ptcp::get_fd_proxy(heap);
 
-    char buf[1024];
-    int res = read(snapshot, buf, 1024);
-    Genode::warning("snapshot: read returned ", res);
-    Genode::log("Fd_mapping:");
-    puts(buf);
+    // Assume app remembered fd 100 and we restored it as socket with fd=2
+
+    int libc_fd = proxy->map_fd(Ptcp::Fd_proxy::Fd_space::Id{100});
+    if (libc_fd == 2) {
+        Genode::warning("Fd_proxy: Test succeded"); // Should be 2
+    }
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-
     struct sockaddr_in in_addr;
     in_addr.sin_family = AF_INET;
     in_addr.sin_port = htons(80);
@@ -46,9 +48,10 @@ void _main() {
 }
 
 void Libc::Component::construct(Libc::Env &env) {
-
     with_libc([&]() {
+        open("/socket/nonexistent", O_RDONLY); // Make vfs plugin aware that libc is initialized
+
         pthread_t t;
-        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
+        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), &env);
     });
 }

@@ -1,5 +1,5 @@
-#ifndef _LWIP_WRAPPER_H_
-#define _LWIP_WRAPPER_H_
+#ifndef _PTCP_LWIP_WRAPPER_H_
+#define _PTCP_LWIP_WRAPPER_H_
 
 // VFS includes
 #include <vfs/env.h>
@@ -16,32 +16,23 @@ class Ptcp::Vfs_wrapper : public Vfs::Proxy_fs {
 private:
     Vfs::Env &_env;
 
-    /**
-     * Stores mapping between old libc fds and new ones
-     */
-    Buffer_file_system *readonly_fs = nullptr;
-
-    Buffer_file_system *get_readonly_fs() {
-        while (readonly_fs == nullptr) {}
-        return readonly_fs;
-    };
+    bool initialized = false;
+    Ptcp::Snapshot::Load_manager load_manager;
 
 public:
-    Vfs_wrapper(Vfs::Env &env, File_system &fs) : Vfs::Proxy_fs(fs), _env(env) {}
-
-    void initialize_readonly_fs(char *content, Genode::size_t size) {
-        readonly_fs = new(_env.alloc()) Buffer_file_system(content, size, "fd_mapping");
-    }
-
-    Open_result open(const char *path, unsigned int mode, Vfs::Vfs_handle **handle, Genode::Allocator &alloc) override {
-        Open_result a = get_readonly_fs()->open(path, mode, handle, alloc);
-        if (a == OPEN_OK) return a;
-        return Proxy_fs::open(path, mode, handle, alloc);
-    }
+    Vfs_wrapper(Vfs::Env &env, File_system &lwip_fs, Ptcp::Snapshot::Load_manager load_manager)
+            : Vfs::Proxy_fs(lwip_fs), _env(env), load_manager(load_manager) {}
 
     Stat_result stat(const char *path, Stat &stat) override {
-        Stat_result a = get_readonly_fs()->stat(path, stat);
-        if (a == STAT_OK) return a;
+        // XXX
+        // libc state can be restored only after libc is initialized.
+        // I have no idea how to detect this from within VFS plugin. Only solution I came up with
+        // is to wait until app accesses any file in plugin directory.
+        if (!initialized) {
+            // Loading state
+            load_manager.load_libc_state();
+            initialized = true;
+        }
         return Proxy_fs::stat(path, stat);
     }
 
@@ -50,4 +41,4 @@ public:
     }
 };
 
-#endif //_LWIP_WRAPPER_H_
+#endif //_PTCP_LWIP_WRAPPER_H_

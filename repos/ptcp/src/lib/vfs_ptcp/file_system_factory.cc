@@ -20,15 +20,15 @@ extern "C" Vfs::File_system_factory *vfs_file_system_factory(void) {
         Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override {
             Vfs::File_system *lwip_fs = get_lwip_factory(vfs_env)->create(vfs_env, config);
 
-            Ptcp::Vfs_wrapper *wrapper = new(vfs_env.alloc()) Ptcp::Vfs_wrapper(vfs_env, *lwip_fs);
-
             // Create load manager
             Ptcp::Snapshot::Load_manager manager{vfs_env.alloc()};
-            // Load snapshot from disk
-            manager.load_saved_state();
-            // Use wrapper to restore state
-            manager.inject_state(*wrapper);
-
+            // Create FS
+            Ptcp::Vfs_wrapper *wrapper = new(vfs_env.alloc()) Ptcp::Vfs_wrapper(
+                    vfs_env,
+                    *lwip_fs,
+                    manager
+            );
+            // Enable processing of SIG_SNAP
             setup_sig_handlers(vfs_env.env());
 
             return wrapper;
