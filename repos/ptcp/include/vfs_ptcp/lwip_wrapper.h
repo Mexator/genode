@@ -6,7 +6,6 @@
 
 // Util VFSs
 #include <vfs_collection/proxy_fs.h>
-#include <vfs_collection/buffer_fs.h>
 
 namespace Ptcp {
     struct Vfs_wrapper;
@@ -18,6 +17,7 @@ private:
 
     bool initialized = false;
     Ptcp::Snapshot::Load_manager load_manager;
+    Genode::Mutex _m;
 
 public:
     Vfs_wrapper(Vfs::Env &env, File_system &lwip_fs, Ptcp::Snapshot::Load_manager load_manager)
@@ -28,10 +28,17 @@ public:
         // libc state can be restored only after libc is initialized.
         // I have no idea how to detect this from within VFS plugin. Only solution I came up with
         // is to wait until app accesses any file in plugin directory.
+
+        // Perform double check to do init AND avoid deadlock
         if (!initialized) {
-            // Loading state
-            load_manager.load_libc_state();
-            initialized = true;
+            _m.acquire();
+            if (!initialized) {
+                initialized = true;
+                // Loading state
+                load_manager.read_snapshot_file();
+                load_manager.load_libc_state();
+            }
+            _m.release();
         }
         return Proxy_fs::stat(path, stat);
     }

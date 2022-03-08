@@ -966,13 +966,24 @@ extern "C" int socket_fs_getsockopt(int libc_fd, int level, int optname,
 			}
 			return 0;
         case SO_INTERNAL_STATE:
-            *(socket_state*) optval = socket_state {
-                context->proto(), context->state()
-            };
-            if (*optlen < sizeof (socket_state)) {
-                *optlen = sizeof (socket_state);
+            {
+                int proto = 0;
+                switch (context->proto()) {
+                    case Socket_fs::Context::Proto::TCP:
+                        proto = SOCK_STREAM;
+                        break;
+                    case Socket_fs::Context::Proto::UDP:
+                        proto = SOCK_DGRAM;
+                        break;
+                }
+                *(socket_state *) optval = socket_state{
+                        proto, context->state()
+                };
+                if (*optlen < sizeof(socket_state)) {
+                    *optlen = sizeof(socket_state);
+                }
+                return 0;
             }
-            return 0;
 		default: return Errno(ENOPROTOOPT);
 		}
 
@@ -1004,6 +1015,11 @@ extern "C" int socket_fs_setsockopt(int libc_fd, int level, int optname,
 				if (l->l_onoff == 0)
 					return 0;
 			}
+        case SO_INTERNAL_STATE:
+            {
+                socket_state state = *(socket_state *)optval;
+                context->state((Context::State)state.state);
+            }
 		default: return Errno(ENOPROTOOPT);
 		}
 	case IPPROTO_TCP:

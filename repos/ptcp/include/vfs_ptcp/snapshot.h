@@ -14,8 +14,11 @@
 #define LWIP_NO_UNISTD_H 0
 #define SSIZE_MAX
 
-#include <lwip/tcp.h>
+// Genode includes
 #include <base/allocator.h>
+
+// lwip includes
+#include <lwip/tcp.h>
 
 namespace Ptcp {
     namespace Snapshot {
@@ -34,7 +37,7 @@ namespace Ptcp {
 
 // Libc socket plugin state
 struct Ptcp::Snapshot::Libc::Socket_state {
-    unsigned int proto;
+    int proto;
     unsigned int state;
     unsigned long proxy_handle;
 };

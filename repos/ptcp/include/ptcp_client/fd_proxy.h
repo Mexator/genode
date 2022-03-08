@@ -9,7 +9,9 @@ namespace Ptcp {
     class Fd_proxy;
     namespace Snapshot {
         class Load_manager;
+
         struct Composed_state;
+
         Composed_state form_snapshot(Genode::Allocator &alloc);
     }
 
@@ -23,6 +25,7 @@ public:
     typedef Fd_space::Element Fd_element;
 private:
     friend class Ptcp::Snapshot::Load_manager;
+
     friend Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allocator &alloc);
 
     // Wrapper to allow deleting of objects (see repos/libports/include/libc-plugin/fd_alloc.h)
@@ -33,11 +36,11 @@ private:
 
         explicit Fd_handle(int libc_fd, Fd_space &space) : elem(*this, space), _libc_fd(libc_fd) {}
 
-        explicit Fd_handle(int libc_fd, int proxy_fd, Fd_space &space) :
+        explicit Fd_handle(int libc_fd, unsigned long proxy_fd, Fd_space &space) :
                 elem(
                         *this,
                         space,
-                        Fd_space::Id{(unsigned long) proxy_fd}),
+                        Fd_space::Id{proxy_fd}),
                 _libc_fd(libc_fd) {}
     };
 
@@ -67,7 +70,7 @@ private:
     /**
      * Register [proxy_fd] as alias for [libc_fd]
      */
-    void set(int libc_fd, int proxy_fd) {
+    void set(int libc_fd, unsigned long proxy_fd) {
         new(_alloc) Fd_handle(libc_fd, proxy_fd, fd_space);
     }
 

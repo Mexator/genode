@@ -4,7 +4,7 @@
 #define SO_INTERNAL_STATE 0x00000011
 
 struct socket_state {
-    unsigned int proto;
+    int proto;
     unsigned int state;
 };
 

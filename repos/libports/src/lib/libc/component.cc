@@ -23,6 +23,7 @@
 
 /* libc-internal includes */
 #include <internal/kernel.h>
+#include <libc/component.h>
 
 
 extern char **environ;
@@ -69,6 +70,19 @@ void Component::construct(Genode::Env &env)
 		plugin.init(env);
 	};
 	Libc::plugin_registry()->for_each_plugin(init_plugin);
+
+    auto initPtcp = [&](Libc::Plugin &plugin) {
+        Genode::warning("Modified Libc component creation code. Consider other ways to init PTCP!!!");
+        if (auto *p = dynamic_cast<Libc::Vfs_plugin *>(&plugin)) {
+            // The stat below actually restores tcp stack state. It reopens
+            // sockets. So it needs libc runtime.
+            Libc::with_libc([&]() {
+                struct stat tmp;
+                p->stat_from_kernel("/socket/nonexistent", &tmp);
+            });
+        }
+    };
+    Libc::plugin_registry()->for_each_plugin(initPtcp);
 
 	/* construct libc component on kernel stack */
 	Libc::Component::construct(kernel.libc_env());

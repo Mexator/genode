@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <libc-plugin/fd_alloc.h>
 #include <pthread.h>
 #include <ptcp_client/fd_proxy.h>
 #include <base/heap.h>
@@ -49,8 +48,6 @@ void _main(Libc::Env *env) {
 
 void Libc::Component::construct(Libc::Env &env) {
     with_libc([&]() {
-        open("/socket/nonexistent", O_RDONLY); // Make vfs plugin aware that libc is initialized
-
         pthread_t t;
         pthread_create(&t, nullptr, (void *(*)(void *)) (_main), &env);
     });
