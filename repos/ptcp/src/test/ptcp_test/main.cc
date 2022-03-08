@@ -9,19 +9,35 @@
 #include <pthread.h>
 #include <ptcp_client/fd_proxy.h>
 #include <base/heap.h>
+#include <fstream>
 
 void _main(Libc::Env *env) {
     static Genode::Heap heap(env->ram(), env->rm());
     Ptcp::Fd_proxy *proxy = Ptcp::get_fd_proxy(heap);
 
-    // Assume app remembered fd 100 and we restored it as socket with fd=2
+    Ptcp::Fd_proxy::Fd_space::Id sock;
+    Ptcp::Fd_proxy::Fd_space::Id sock2;
 
-    int libc_fd = proxy->map_fd(Ptcp::Fd_proxy::Fd_space::Id{100});
-    if (libc_fd == 2) {
-        Genode::warning("Fd_proxy: Test succeded"); // Should be 2
+    try {
+        std::ifstream snapshot;
+        snapshot.open("/snapshot/app_state");
+        if (!snapshot.is_open()) throw Genode::Exception{};
+        unsigned long id1, id2;
+        snapshot >> id1 >> id2;
+        sock = Ptcp::Fd_proxy::Fd_space::Id{id1};
+        sock2 = Ptcp::Fd_proxy::Fd_space::Id{id2};
+        Genode::log("State restored!");
+        snapshot.close();
+    } catch (...) {
+        Genode::error("failed state restoration. Fallback to normal startup");
+        sock = proxy->register_fd(socket(AF_INET, SOCK_STREAM, 0));
+        sock2 = proxy->register_fd(socket(AF_INET, SOCK_DGRAM, 0));
+        std::ofstream snapshot;
+        snapshot.open("/snapshot/app_state");
+        snapshot << sock.value << " " << sock2.value;
+        snapshot.close();
     }
 
-    Ptcp::Fd_proxy::Fd_space::Id sock = proxy->register_fd(socket(AF_INET, SOCK_STREAM, 0));
     struct sockaddr_in in_addr;
     in_addr.sin_family = AF_INET;
     in_addr.sin_port = htons(80);
@@ -31,7 +47,6 @@ void _main(Libc::Env *env) {
         Genode::error("while calling bind()");
 
     in_addr.sin_port = htons(85);
-    Ptcp::Fd_proxy::Fd_space::Id sock2 = proxy->register_fd(socket(AF_INET, SOCK_DGRAM, 0));
     if (0 != bind(proxy->map_fd(sock2), (struct sockaddr *) &in_addr, sizeof(in_addr)))
         Genode::error("while calling bind()");
 

@@ -13,14 +13,15 @@
 
 using namespace Ptcp::Snapshot;
 
-const Libc::Plugin_state EMPTY{nullptr, 0};
+const Libc::Plugin_state LIBC_EMPTY{nullptr, 0};
+const Lwip_state LWIP_EMPTY{nullptr};
 
 Libc::Plugin_state read_libc_state(std::istream &input, Genode::Allocator &alloc) {
     size_t sockets_number;
     input >> sockets_number;
     if (!sockets_number) {
         Genode::warning("No sockets in snapshot file");
-        return EMPTY;
+        return LIBC_EMPTY;
     }
 
     Libc::Socket_state *sockets = new(alloc) Libc::Socket_state[sockets_number];
@@ -43,13 +44,20 @@ void Load_manager::read_snapshot_file() {
     input.open("/snapshot/saved.txt");
 
     std::string header;
+
     input >> header;
-    if (header != "libc") {
+    Libc::Plugin_state libc_state = LIBC_EMPTY;
+    if (header == "libc") {
+        libc_state = read_libc_state(input, _alloc);
+    } else {
         Genode::error("Check snapshot format! Missing libc header");
     }
-    Libc::Plugin_state libc_state = read_libc_state(input, _alloc);
+
     input >> header;
-    if (header != "lwip") {
+    Lwip_state lwip_state = LWIP_EMPTY;
+    if (header == "lwip") {
+        // Todo read lwip
+    } else {
         Genode::error("Check snapshot format! Missing lwip header");
     }
 
@@ -57,7 +65,7 @@ void Load_manager::read_snapshot_file() {
     Genode::log("Finished reading state");
     _state = new(_alloc) Composed_state{
             libc_state,
-            Snapshot::Lwip_state{nullptr}
+            lwip_state
     };
 }
 
