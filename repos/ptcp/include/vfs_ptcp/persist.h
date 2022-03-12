@@ -6,6 +6,6 @@
 */
 
 constexpr char SNAPSHOT_FILENAME[] = "/snapshot/saved.txt";
-constexpr int SNAPSHOT_VERSION = 1;
+constexpr int SNAPSHOT_VERSION = 2;
 
 #endif //_PTCP_PERSIST_H_

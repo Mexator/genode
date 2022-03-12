@@ -84,9 +84,10 @@ void _main(Libc::Env *env) {
     while (true) {
         struct sockaddr_in in_addr2;
         socklen_t sock_len = sizeof(sockaddr_in);
-        accept(proxy->map_fd(sock), (sockaddr *) &in_addr2, &sock_len);
+        auto i = proxy->register_fd(accept(proxy->map_fd(sock), (sockaddr *) &in_addr2, &sock_len));
         Genode::log("accepted", in_addr2.sin_addr.s_addr);
-        sleep(1);
+        sleep(4);
+        close(proxy->close_fd(i));
     }
 }
 

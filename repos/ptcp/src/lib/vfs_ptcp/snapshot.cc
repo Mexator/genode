@@ -3,13 +3,15 @@
 #include <errno.h>
 #include <list>
 
-#include <lwip/priv/tcp_priv.h>
 #include <internal/snapshot/socket_snapshot.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 using namespace Ptcp::Snapshot;
 
 void log_wrong_fd(int err, int libc_fd);
+
+constexpr char FORM_SNAPSHOT_PREFIX[] = "FORMING SNAPSHOT";
 
 struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allocator &alloc) {
     typedef Ptcp::Fd_proxy::Fd_handle Fd_handle;
@@ -25,21 +27,25 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allo
     std::list<Libc::Socket_state> states;
 
     for (auto &item: fds) {
-        struct sockaddr addr = {};
-        socklen_t len = sizeof(sockaddr);
+        struct sockaddr_in addr = {};
+        socklen_t len = sizeof(sockaddr_in);
 
-        if (0 == getsockname(item->_libc_fd, &addr, &len)) {
-            Genode::log("FD ", item->_libc_fd, " is a socket with address family ", addr.sa_family);
+        if (0 == getsockname(item->_libc_fd, (sockaddr *) &addr, &len)) {
+            if (addr.sin_family != AF_INET && addr.sin_family != AF_INET6) {
+                Genode::warning("Address family ", addr.sin_family, " not fully supported");
+            }
 
             struct socket_state state = {};
             socklen_t state_len = sizeof(socket_state);
             if (0 == getsockopt(item->_libc_fd, SOL_SOCKET, SO_INTERNAL_STATE, &state, &state_len)) {
-
                 states.push_back(Libc::Socket_state{
                         state.proto,
                         state.state,
-                        item->elem.id().value
+                        item->elem.id().value,
+                        addr
                 });
+            } else {
+                Genode::warning("getsockopt returned non-zero!");
             }
         } else {
             log_wrong_fd(errno, item->_libc_fd);
@@ -53,13 +59,12 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allo
                     arr,
                     static_cast<size_t>(states.size())
             },
-            Lwip_state{
-                    tcp_bound_pcbs
-            }
+            LWIP_EMPTY
     };
 }
 
 void log_wrong_fd(int err, int libc_fd) {
+    Genode::log(FORM_SNAPSHOT_PREFIX);
     switch (err) {
         case EBADF:
             Genode::log("FD ", libc_fd, " does not belongs to libc socket plugin");

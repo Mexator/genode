@@ -1,5 +1,6 @@
 // libc includes
 #include <sys/socket.h>
+#include <unistd.h>
 #include <internal/snapshot/socket_snapshot.h>
 
 // PTCP includes
@@ -7,6 +8,12 @@
 #include <ptcp_client/fd_proxy.h>
 
 using namespace Ptcp::Snapshot::Libc;
+
+void read_ip_addr(std::istream &input, sockaddr_in *addr) {
+    addr->sin_family = AF_INET;
+    input >> addr->sin_addr.s_addr;
+    input >> addr->sin_port;
+}
 
 Plugin_state read_libc_state(std::istream &input, Genode::Allocator &alloc) {
     size_t sockets_number;
@@ -21,6 +28,9 @@ Plugin_state read_libc_state(std::istream &input, Genode::Allocator &alloc) {
         Socket_state *socket = &sockets[i];
         *socket = Socket_state();
         input >> socket->proxy_handle >> socket->proto >> socket->state;
+
+        sockaddr_in *addr = &socket->addr;
+        read_ip_addr(input, addr);
     }
 
     return Plugin_state{
@@ -36,6 +46,8 @@ public:
     }
 };
 
+constexpr char RESTORE_PREFIX[] = "DURING RESTORE";
+
 void restore_libc_state(const Plugin_state &state, Genode::Allocator &alloc) {
     // Reopen sockets and set states
     Ptcp::Fd_proxy *proxy = Ptcp::get_fd_proxy(alloc);
@@ -44,10 +56,25 @@ void restore_libc_state(const Plugin_state &state, Genode::Allocator &alloc) {
         Socket_state sock_state = state.socket_states[i];
 
         int sock_fd = socket(AF_INET, sock_state.proto, 0);
-        Ptcp::Snapshot::Restore_state_accessor::set(*proxy, sock_fd, sock_state.proxy_handle);
+        if (sock_fd == -1) {
+            Genode::error(RESTORE_PREFIX, "while creating socket");
+            continue;
+        }
+
+        if (0 != bind(sock_fd, (struct sockaddr *) &sock_state.addr, sizeof(sock_state.addr))) {
+            Genode::error(RESTORE_PREFIX, "while calling bind()");
+            close(sock_fd);
+            continue;
+        }
 
         socket_state internal_state = socket_state{sock_state.proto, sock_state.state};
 
-        setsockopt(sock_fd, SOL_SOCKET, SO_INTERNAL_STATE, &internal_state, sizeof(internal_state));
+        if (0 != setsockopt(sock_fd, SOL_SOCKET, SO_INTERNAL_STATE, &internal_state, sizeof(internal_state))) {
+            Genode::error(RESTORE_PREFIX, "while calling setsockopt()");
+            close(sock_fd);
+            continue;
+        }
+
+        Ptcp::Snapshot::Restore_state_accessor::set(*proxy, sock_fd, sock_state.proxy_handle);
     }
 }
