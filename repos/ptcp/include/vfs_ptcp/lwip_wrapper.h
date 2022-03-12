@@ -36,7 +36,7 @@ public:
                 initialized = true;
                 // Loading state
                 load_manager.read_snapshot_file();
-                load_manager.load_libc_state();
+                load_manager.restore_state();
             }
             _m.release();
         }

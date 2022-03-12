@@ -1,11 +1,17 @@
+// Genode includes
 #include <base/rpc_client.h>
-#include <base/component.h>
 #include <base/heap.h>
 #include <base/connection.h>
-#include <snapshot_notifier/session.h>
-#include <vfs_ptcp/snapshot.h>
-#include <vfs_ptcp/persist.h>
+
+// Libc includes
 #include <libc/component.h>
+
+// PTCP includes
+#include <vfs_ptcp/snapshot.h>
+#include <vfs_ptcp/save.h>
+
+// Snapshot signal includes
+#include <snapshot_notifier/session.h>
 
 namespace Ptcp {
     struct Session_client;
@@ -45,7 +51,7 @@ struct Ptcp::Signals_entrypoint {
         Libc::with_libc([&] {
             Snapshot::Composed_state state = Snapshot::form_snapshot(_alloc);
             Genode::log("do_snapshot(): state formed");
-            persist_saved_state(state);
+            save_state(state);
             Genode::log("Saved state of ", state.libc_state.sockets_number, " sockets");
         });
     }

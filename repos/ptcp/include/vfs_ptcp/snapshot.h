@@ -46,10 +46,12 @@ struct Ptcp::Snapshot::Libc::Plugin_state {
     Socket_state *socket_states;
     size_t sockets_number;
 };
+const Ptcp::Snapshot::Libc::Plugin_state LIBC_EMPTY{nullptr, 0};
 
 struct Ptcp::Snapshot::Lwip_state {
     tcp_pcb *bound_pcbs;
 };
+const Ptcp::Snapshot::Lwip_state LWIP_EMPTY{nullptr};
 
 struct Ptcp::Snapshot::Composed_state {
     Libc::Plugin_state libc_state;

@@ -14,7 +14,11 @@ INC_DIR += $(LIBC_SRC_DIR)
 
 SRC_CC += file_system_factory.cc
 SRC_CC += load.cc
-SRC_CC += persist.cc
+SRC_CC += load_state/load_libc.cc
+SRC_CC += load_state/load_lwip.cc
+SRC_CC += save.cc
+SRC_CC += save_state/save_libc.cc
+SRC_CC += save_state/save_lwip.cc
 SRC_CC += sig_handlers.cc
 SRC_CC += snapshot.cc
 

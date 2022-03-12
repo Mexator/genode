@@ -1,12 +1,11 @@
 #ifndef _PTCP_PERSIST_H_
 #define _PTCP_PERSIST_H_
 
-namespace Ptcp {
-    namespace Snapshot {
-        struct Composed_state;
-    }
-}
+/*
+ * Shared constants and definitions for saving and reading snapshot file
+*/
 
-void persist_saved_state(Ptcp::Snapshot::Composed_state state);
+constexpr char SNAPSHOT_FILENAME[] = "/snapshot/saved.txt";
+constexpr int SNAPSHOT_VERSION = 1;
 
 #endif //_PTCP_PERSIST_H_
