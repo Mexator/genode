@@ -20,12 +20,18 @@ macaddr=`echo 52:54:$(random_byte):$(random_byte):$(random_byte):$(random_byte)`
 
 echo $macaddr
 
+disk_img="stuff/ext2.raw"
+
 qemu-system-x86_64 \
 -display none \
 -cpu core2duo \
 -machine q35 \
 -serial mon:stdio \
+-serial chardev:uart \
+-chardev socket,id=uart,port=5555,host=localhost,server,nowait,ipv4 \
 -m 2048 \
 -netdev tap,id=net0 \
 -net nic,model=e1000,netdev=net0,macaddr=$macaddr \
--cdrom "$image"
+-cdrom "$image" \
+-drive id=disk,file=$disk_img,format=raw,if=none \
+-device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0

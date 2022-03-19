@@ -3,6 +3,7 @@
 *.swp
 *.rej
 *.qcow2
+*.raw
 
 /build
 /contrib
@@ -16,3 +17,5 @@
 
 .vscode
 .idea
+CMakeLists.txt
+cmake-build-debug
