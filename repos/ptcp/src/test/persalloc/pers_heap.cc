@@ -1,7 +1,6 @@
 #include <persalloc/pers_heap.h>
 
 using namespace Persalloc;
-using Genode::addr_t;
 using Genode::align_addr;
 using Genode::construct_at;
 using Genode::error;
@@ -69,7 +68,7 @@ int Heap::quota_limit(size_t new_quota_limit) {
 
 
 Heap::Alloc_ds_result
-Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata) {
+Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::addr_t local_addr) {
     using Result = Alloc_ds_result;
 
     return _ds_pool.ram_alloc->try_alloc(size).convert<Result>(
@@ -102,7 +101,8 @@ Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata) {
                 } attach_guard(*_ds_pool.region_map);
 
                 try {
-                    attach_guard.ptr = _ds_pool.region_map->attach(ds_cap);
+                    bool use_local_addr = local_addr != 0;
+                    attach_guard.ptr = _ds_pool.region_map->attach(ds_cap, 0, 0, use_local_addr, local_addr);
                 }
                 catch (Out_of_ram) { return Alloc_error::OUT_OF_RAM; }
                 catch (Out_of_caps) { return Alloc_error::OUT_OF_CAPS; }
@@ -320,4 +320,28 @@ Heap::~Heap() {
      * the allocator would access no-longer-present backing store.
      */
     _alloc.destruct();
+}
+
+Allocator::Alloc_result Heap::alloc_addr(size_t size, addr_t addr) {
+
+    /* serialize access of heap functions */
+    Mutex::Guard guard(_mutex);
+
+    /* check requested allocation against quota limit */
+    if (size + _quota_used > _quota_limit)
+        throw Ram_allocator::Denied();
+
+    // XXX: assume we use alloc_addr only for big ranges
+    size_t const dataspace_size = align_addr(size, 12);
+
+    return _allocate_dataspace(dataspace_size, false, addr).convert<Alloc_result>(
+
+            [&](Dataspace *ds_ptr) {
+                _quota_used += ds_ptr->size;
+                return ds_ptr->local_addr;
+            },
+
+            [&](Alloc_error error) {
+                return error;
+            });
 }

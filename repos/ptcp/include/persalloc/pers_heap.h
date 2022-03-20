@@ -8,6 +8,7 @@
 #include <util/reconstructible.h>
 
 namespace Persalloc {
+    using Genode::addr_t;
     using Genode::List;
     using Genode::Mutex;
     using Genode::Allocator;
@@ -94,8 +95,10 @@ private:
      * \param size                       number of bytes to allocate
      * \param enforce_separate_metadata  if true, the new dataspace
      *                                   will not contain any meta data
+     *
+     * \param local_addr                if not 0, will try to attach dataspace at local address
      */
-    Alloc_ds_result _allocate_dataspace(size_t size, bool enforce_separate_metadata);
+    Alloc_ds_result _allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::addr_t local_addr = 0);
 
     /**
      * Try to allocate block at our local allocator
@@ -146,6 +149,11 @@ public:
             fn(ds->local_addr, ds->size);
     }
 
+    /*****************
+     ** My bullshit **
+     *****************/
+
+    Alloc_result alloc_addr(size_t size, addr_t addr);
 
     /*************************
      ** Allocator interface **
