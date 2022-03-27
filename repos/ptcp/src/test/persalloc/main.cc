@@ -15,7 +15,7 @@ constexpr char heap_snap_path[] = "/snapshot/persalloc";
 char *restore_app() {
     std::ifstream app;
     app.open(app_snap_path);
-    Genode::addr_t pointer;
+    Genode::addr_t pointer = 0;
     app >> pointer;
     app.close();
     return (char *) pointer;

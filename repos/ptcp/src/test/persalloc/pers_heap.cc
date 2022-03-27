@@ -129,99 +129,21 @@ Heap::_allocate_dataspace(size_t size, bool use_local_addr, Region_map_address l
 }
 
 
-Allocator::Alloc_result Heap::_try_local_alloc(size_t size) {
-    Genode::log("Heap::_try_local_alloc");
-    return _alloc->alloc_aligned(size, log2(16U)).convert<Alloc_result>(
+Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
+    size_t const dataspace_size = align_addr(size, 12);
 
-            [&](void *ptr) {
-                Genode::log("local allocator succeeds");
-                _quota_used += size;
-                return ptr;
+    return _allocate_dataspace(dataspace_size).convert<Alloc_result>(
+
+            [&](Dataspace *ds_ptr) {
+                _quota_used += ds_ptr->size;
+                Genode::log("rm addr ", ds_ptr->local_addr);
+                Genode::log("local addr ", _region_addr_to_local(ds_ptr->local_addr));
+                return _region_addr_to_local(ds_ptr->local_addr);
             },
 
             [&](Alloc_error error) {
-                Genode::log("local allocator fails");
                 return error;
             });
-}
-
-
-Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
-    if (size >= BIG_ALLOCATION_THRESHOLD) {
-
-        /*
-         * big allocation
-         *
-         * In this case, we allocate one dataspace without any meta data in it
-         * and return its local address without going through the allocator.
-         */
-
-        /* align to 4K page */
-        size_t const dataspace_size = align_addr(size, 12);
-
-        return _allocate_dataspace(dataspace_size).convert<Alloc_result>(
-
-                [&](Dataspace *ds_ptr) {
-                    _quota_used += ds_ptr->size;
-                    return _region_addr_to_local(ds_ptr->local_addr);
-                },
-
-                [&](Alloc_error error) {
-                    return error;
-                });
-    }
-
-    /* try allocation at our local allocator */
-    {
-        Alloc_result result = _try_local_alloc(size);
-        if (result.ok())
-            return result;
-    }
-
-    size_t dataspace_size = size
-                            + Allocator_avl::slab_block_size()
-                            + sizeof(Heap::Dataspace);
-    /* align to 4K page */
-    dataspace_size = align_addr(dataspace_size, 12);
-
-    /*
-     * '_chunk_size' is a multiple of 4K, so 'dataspace_size' becomes
-     * 4K-aligned, too.
-     */
-    size_t const request_size = _chunk_size * sizeof(umword_t);
-
-    Alloc_ds_result result = Alloc_error::DENIED;
-
-    if (dataspace_size < request_size) {
-
-        result = _allocate_dataspace(request_size);
-        if (result.ok()) {
-
-            /*
-             * Exponentially increase chunk size with each allocated chunk until
-             * we hit 'MAX_CHUNK_SIZE'.
-             */
-            _chunk_size = min(2 * _chunk_size, (size_t) MAX_CHUNK_SIZE);
-        }
-    } else {
-        result = _allocate_dataspace(dataspace_size);
-    }
-
-    // Since this block is small, and small blocks are allocated with local allocator
-    // We need to attach allocated dataspace to local allocator
-    result.with_result([&](Dataspace *d) {
-        Genode::log("Attached dataspace to avl allocator");
-        _alloc->add_range((addr_t) _region_addr_to_local(d->local_addr), size);
-        d->attached_at_local = true;
-    }, [&](Alloc_error) {});
-
-    if (result.failed())
-        return result.convert<Alloc_result>(
-                [&](Dataspace *) { return Alloc_error::DENIED; },
-                [&](Alloc_error error) { return error; });
-
-    /* allocate originally requested block */
-    return _try_local_alloc(size);
 }
 
 
@@ -244,17 +166,6 @@ void Heap::free(void *addr, size_t) {
     /* serialize access of heap functions */
     Mutex::Guard guard(_mutex);
 
-    /* try to find the size in our local allocator */
-    size_t const size = _alloc->size_at(addr);
-
-    if (size != 0) {
-
-        /* forward request to our local allocator */
-        _alloc->free(addr, size);
-        _quota_used -= size;
-        return;
-    }
-
     /*
      * Block could not be found in local allocator. So it is either a big
      * allocation or invalid address.
@@ -275,7 +186,6 @@ void Heap::free(void *addr, size_t) {
     _quota_used -= ds->size;
 
     _ds_pool.remove_and_free(*ds);
-    _alloc->free(ds);
 }
 
 
@@ -287,39 +197,15 @@ Heap::Heap(Ram_allocator *ram_alloc,
            void *static_addr,
            size_t static_size)
         :
-        _alloc(nullptr),
         _md_alloc(md_alloc),
         _rm_attach_addr(Local_address(rm_attach_addr)),
         _ds_pool(ram_alloc, region_map),
         _quota_limit(quota_limit), _quota_used(0),
         _chunk_size(MIN_CHUNK_SIZE) {
-    if (static_addr)
-        _alloc->add_range((addr_t) static_addr, static_size);
 }
 
 
 Heap::~Heap() {
-    /*
-     * Revert allocations of heap-internal 'Dataspace' objects. Otherwise, the
-     * subsequent destruction of the 'Allocator_avl' would detect those blocks
-     * as dangling allocations.
-     *
-     * Since no new allocations can occur at the destruction time of the
-     * 'Heap', it is safe to release the 'Dataspace' objects at the allocator
-     * yet still access them afterwards during the destruction of the
-     * 'Allocator_avl'.
-     */
-    for (Heap::Dataspace *ds = _ds_pool.first(); ds; ds = ds->next())
-        _alloc->free(ds, sizeof(Dataspace));
-
-    /*
-     * Destruct 'Allocator_avl' before destructing the dataspace pool. This
-     * order is important because some dataspaces of the dataspace pool are
-     * used as backing store for the allocator's meta data. If we destroyed
-     * the object pool before the allocator, the subsequent attempt to destruct
-     * the allocator would access no-longer-present backing store.
-     */
-    _alloc.destruct();
 }
 
 Allocator::Alloc_result Heap::alloc_addr(size_t size, Region_map_address addr, bool add_to_local) {
@@ -333,10 +219,6 @@ Allocator::Alloc_result Heap::alloc_addr(size_t size, Region_map_address addr, b
 
             [&](Dataspace *ds_ptr) {
                 _quota_used += ds_ptr->size;
-                if (add_to_local) {
-                    _alloc->add_range((addr_t) _region_addr_to_local(ds_ptr->local_addr), size);
-                    ds_ptr->attached_at_local = true;
-                }
                 return ds_ptr->local_addr;
             },
 

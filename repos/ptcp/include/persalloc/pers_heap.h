@@ -76,7 +76,6 @@ public:
 
 private:
     Mutex mutable _mutex{};
-    Reconstructible<Allocator_avl> _alloc;        /* local allocator    */
     Allocator &_md_alloc;     /* Allocator to alloc metadata */
     Local_address _rm_attach_addr; /* Address of region_map within component's address space */
     Dataspace_pool _ds_pool;      /* list of dataspaces */
@@ -94,11 +93,6 @@ private:
      * \param local_addr
      */
     Alloc_ds_result _allocate_dataspace(size_t size, bool use_local_addr = false, Region_map_address local_addr = 0);
-
-    /**
-     * Try to allocate block at our local allocator
-     */
-    Alloc_result _try_local_alloc(size_t size);
 
     /**
      * Unsynchronized implementation of 'try_alloc'
@@ -184,7 +178,7 @@ public:
 
     size_t consumed() const override { return _quota_used; }
 
-    size_t overhead(size_t size) const override { return _alloc->overhead(size); }
+    size_t overhead(size_t size) const override { return sizeof(Dataspace); }
 
     bool need_size_for_free() const override { return false; }
 };
