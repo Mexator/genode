@@ -36,7 +36,7 @@ void Heap::Dataspace_pool::remove_and_free(Dataspace &ds) {
      */
 
     Ram_dataspace_capability ds_cap = ds.cap;
-    void *ds_local_addr = ds.local_addr;
+    Region_map_address ds_local_addr = ds.local_addr;
 
     remove(&ds);
 
@@ -68,7 +68,8 @@ int Heap::quota_limit(size_t new_quota_limit) {
 
 
 Heap::Alloc_ds_result
-Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::addr_t local_addr) {
+Heap::_allocate_dataspace(size_t size, bool use_local_addr, Region_map_address local_addr) {
+    Genode::log("Heap::_allocate_dataspace, requested size = ", size);
     using Result = Alloc_ds_result;
 
     return _ds_pool.ram_alloc->try_alloc(size).convert<Result>(
@@ -101,7 +102,6 @@ Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::a
                 } attach_guard(*_ds_pool.region_map);
 
                 try {
-                    bool use_local_addr = local_addr != 0;
                     attach_guard.ptr = _ds_pool.region_map->attach(ds_cap, 0, 0, use_local_addr, local_addr);
                 }
                 catch (Out_of_ram) { return Alloc_error::OUT_OF_RAM; }
@@ -109,23 +109,7 @@ Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::a
                 catch (Region_map::Invalid_dataspace) { return Alloc_error::DENIED; }
                 catch (Region_map::Region_conflict) { return Alloc_error::DENIED; }
 
-                Alloc_result metadata = Alloc_error::DENIED;
-
-                /* allocate the 'Dataspace' structure */
-                if (enforce_separate_metadata) {
-                    metadata = _unsynchronized_alloc(sizeof(Heap::Dataspace));
-
-                } else {
-
-                    /* add new local address range to our local allocator */
-                    _alloc->add_range((addr_t) attach_guard.ptr, size).with_result(
-                            [&](Range_allocator::Range_ok) {
-                                metadata = _alloc->alloc_aligned(sizeof(Heap::Dataspace), log2(16U));
-                            },
-                            [&](Alloc_error error) {
-                                metadata = error;
-                            });
-                }
+                Alloc_result metadata = _md_alloc.try_alloc(sizeof(Heap::Dataspace));
 
                 return metadata.convert<Result>(
                         [&](void *md_ptr) -> Result {
@@ -146,14 +130,17 @@ Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata, Genode::a
 
 
 Allocator::Alloc_result Heap::_try_local_alloc(size_t size) {
+    Genode::log("Heap::_try_local_alloc");
     return _alloc->alloc_aligned(size, log2(16U)).convert<Alloc_result>(
 
             [&](void *ptr) {
+                Genode::log("local allocator succeeds");
                 _quota_used += size;
                 return ptr;
             },
 
             [&](Alloc_error error) {
+                Genode::log("local allocator fails");
                 return error;
             });
 }
@@ -172,11 +159,11 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
         /* align to 4K page */
         size_t const dataspace_size = align_addr(size, 12);
 
-        return _allocate_dataspace(dataspace_size, true).convert<Alloc_result>(
+        return _allocate_dataspace(dataspace_size).convert<Alloc_result>(
 
                 [&](Dataspace *ds_ptr) {
                     _quota_used += ds_ptr->size;
-                    return ds_ptr->local_addr;
+                    return _region_addr_to_local(ds_ptr->local_addr);
                 },
 
                 [&](Alloc_error error) {
@@ -207,7 +194,7 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
 
     if (dataspace_size < request_size) {
 
-        result = _allocate_dataspace(request_size, false);
+        result = _allocate_dataspace(request_size);
         if (result.ok()) {
 
             /*
@@ -217,8 +204,16 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
             _chunk_size = min(2 * _chunk_size, (size_t) MAX_CHUNK_SIZE);
         }
     } else {
-        result = _allocate_dataspace(dataspace_size, false);
+        result = _allocate_dataspace(dataspace_size);
     }
+
+    // Since this block is small, and small blocks are allocated with local allocator
+    // We need to attach allocated dataspace to local allocator
+    result.with_result([&](Dataspace *d) {
+        Genode::log("Attached dataspace to avl allocator");
+        _alloc->add_range((addr_t) _region_addr_to_local(d->local_addr), size);
+        d->attached_at_local = true;
+    }, [&](Alloc_error) {});
 
     if (result.failed())
         return result.convert<Alloc_result>(
@@ -265,10 +260,11 @@ void Heap::free(void *addr, size_t) {
      * allocation or invalid address.
      */
 
+    Region_map_address address = _local_addr_to_region(addr);
     Heap::Dataspace *ds = nullptr;
     for (ds = _ds_pool.first(); ds; ds = ds->next())
-        if (((addr_t) addr >= (addr_t) ds->local_addr) &&
-            ((addr_t) addr <= (addr_t) ds->local_addr + ds->size - 1))
+        if (((addr_t) address >= (addr_t) ds->local_addr) &&
+            ((addr_t) address <= (addr_t) ds->local_addr + ds->size - 1))
             break;
 
     if (!ds) {
@@ -285,11 +281,15 @@ void Heap::free(void *addr, size_t) {
 
 Heap::Heap(Ram_allocator *ram_alloc,
            Region_map *region_map,
+           Allocator &md_alloc,
+           addr_t rm_attach_addr,
            size_t quota_limit,
            void *static_addr,
            size_t static_size)
         :
         _alloc(nullptr),
+        _md_alloc(md_alloc),
+        _rm_attach_addr(Local_address(rm_attach_addr)),
         _ds_pool(ram_alloc, region_map),
         _quota_limit(quota_limit), _quota_used(0),
         _chunk_size(MIN_CHUNK_SIZE) {
@@ -322,22 +322,21 @@ Heap::~Heap() {
     _alloc.destruct();
 }
 
-Allocator::Alloc_result Heap::alloc_addr(size_t size, addr_t addr) {
+Allocator::Alloc_result Heap::alloc_addr(size_t size, Region_map_address addr, bool add_to_local) {
 
     /* serialize access of heap functions */
     Mutex::Guard guard(_mutex);
 
-    /* check requested allocation against quota limit */
-    if (size + _quota_used > _quota_limit)
-        throw Ram_allocator::Denied();
-
-    // XXX: assume we use alloc_addr only for big ranges
     size_t const dataspace_size = align_addr(size, 12);
 
-    return _allocate_dataspace(dataspace_size, false, addr).convert<Alloc_result>(
+    return _allocate_dataspace(dataspace_size, true, addr).convert<Alloc_result>(
 
             [&](Dataspace *ds_ptr) {
                 _quota_used += ds_ptr->size;
+                if (add_to_local) {
+                    _alloc->add_range((addr_t) _region_addr_to_local(ds_ptr->local_addr), size);
+                    ds_ptr->attached_at_local = true;
+                }
                 return ds_ptr->local_addr;
             },
 
