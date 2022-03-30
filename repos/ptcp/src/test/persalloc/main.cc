@@ -78,6 +78,7 @@ int my_main(Libc::Env &env) {
     auto q = new(heap) char[32];
     printf("q address %p\n", q);
     strcpy(q, "AHAHA OVERWRITE!");
+    heap.free(q, 0);
 
     // save app
     std::ofstream app;

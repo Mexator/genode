@@ -83,5 +83,5 @@ append config {
 install_config $config
 build_boot_image {
     libc.lib.so libm.lib.so stdcxx.lib.so
-    persalloc
+    persalloc.lib.so persalloc
 }
