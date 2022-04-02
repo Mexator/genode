@@ -69,7 +69,7 @@ int Heap::quota_limit(size_t new_quota_limit) {
 
 Heap::Alloc_ds_result
 Heap::_allocate_dataspace(size_t size, bool use_local_addr, Region_map_address local_addr) {
-    Genode::log("Heap::_allocate_dataspace, requested size = ", size);
+//    Genode::log("Heap::_allocate_dataspace, requested size = ", size);
     using Result = Alloc_ds_result;
 
     return _ds_pool.ram_alloc->try_alloc(size).convert<Result>(
@@ -136,9 +136,9 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
 
             [&](Dataspace *ds_ptr) {
                 _quota_used += ds_ptr->size;
-                Genode::log("rm addr ", ds_ptr->local_addr);
-                Genode::log("local addr ", _region_addr_to_local(ds_ptr->local_addr));
-                return _region_addr_to_local(ds_ptr->local_addr);
+//                Genode::log("rm addr ", ds_ptr->local_addr);
+//                Genode::log("local addr ", region_addr_to_local(ds_ptr->local_addr));
+                return region_addr_to_local(ds_ptr->local_addr);
             },
 
             [&](Alloc_error error) {
@@ -148,6 +148,7 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
 
 
 Allocator::Alloc_result Heap::try_alloc(size_t size) {
+//    Genode::log("Heap::try_alloc, size = ", size);
     if (size == 0)
         error("attempt to allocate zero-size block from heap");
 
@@ -171,7 +172,7 @@ void Heap::free(void *addr, size_t) {
      * allocation or invalid address.
      */
 
-    Region_map_address address = _local_addr_to_region(addr);
+    Region_map_address address = local_addr_to_region(addr);
     Heap::Dataspace *ds = nullptr;
     for (ds = _ds_pool.first(); ds; ds = ds->next())
         if (((addr_t) address >= (addr_t) ds->local_addr) &&

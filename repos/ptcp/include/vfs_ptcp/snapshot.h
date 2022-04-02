@@ -8,6 +8,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+// "internal" includes
+#include <persalloc/pers_heap.h>
+
 namespace Ptcp {
     namespace Snapshot {
         namespace Libc {
@@ -20,6 +23,9 @@ namespace Ptcp {
         struct Composed_state;
 
         Composed_state form_snapshot(Genode::Allocator &alloc);
+
+        void set(Persalloc::Heap *h);
+        Persalloc::Heap *get();
     }
 }
 
@@ -38,8 +44,14 @@ struct Ptcp::Snapshot::Libc::Plugin_state {
 const Ptcp::Snapshot::Libc::Plugin_state LIBC_EMPTY{nullptr, 0};
 
 struct Ptcp::Snapshot::Lwip_state {
+    struct Dataspace {
+        Persalloc::Heap::Local_address addr;
+        Genode::size_t size;
+    } *dataspaces;
+
+    int dataspaces_number;
 };
-const Ptcp::Snapshot::Lwip_state LWIP_EMPTY{};
+const Ptcp::Snapshot::Lwip_state LWIP_EMPTY{nullptr, 0};
 
 struct Ptcp::Snapshot::Composed_state {
     Libc::Plugin_state libc_state;

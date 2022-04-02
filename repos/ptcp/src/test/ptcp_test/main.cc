@@ -86,6 +86,10 @@ void _main(Libc::Env *env) {
         socklen_t sock_len = sizeof(sockaddr_in);
         auto i = proxy->register_fd(accept(proxy->map_fd(sock), (sockaddr *) &in_addr2, &sock_len));
         Genode::log("accepted", in_addr2.sin_addr.s_addr);
+        char a[16];
+        read(proxy->map_fd(i), a, 16);
+        printf("read %s", a);
+        write(proxy->map_fd(i),"ABOBUS !!!", 10);
         sleep(4);
         close(proxy->close_fd(i));
     }

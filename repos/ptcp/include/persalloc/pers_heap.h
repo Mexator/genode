@@ -45,7 +45,6 @@ public:
         Ram_dataspace_capability cap;
         Region_map_address local_addr;
         size_t size;
-        bool attached_at_local = false;
 
         Dataspace(Ram_dataspace_capability c, Heap::Region_map_address local_addr, size_t size)
                 : cap(c), local_addr(local_addr), size(size) {}
@@ -98,16 +97,6 @@ private:
      * Unsynchronized implementation of 'try_alloc'
      */
     Alloc_result _unsynchronized_alloc(size_t size);
-
-
-    /* Helpers to map addresses to each other */
-    Local_address _region_addr_to_local(Region_map_address reg) {
-        return Local_address(addr_t(_rm_attach_addr) + addr_t(reg));
-    }
-
-    Region_map_address _local_addr_to_region(Local_address loc) {
-        return Region_map_address(addr_t(loc) - addr_t(_rm_attach_addr));
-    }
 
 public:
 
@@ -167,6 +156,15 @@ public:
      * Helper for debugging
      */
     Dataspace_pool &ds_pool() { return _ds_pool; }
+
+    /* Helpers to map addresses to each other */
+    Local_address region_addr_to_local(Region_map_address reg) {
+        return Local_address(addr_t(_rm_attach_addr) + addr_t(reg));
+    }
+
+    Region_map_address local_addr_to_region(Local_address loc) {
+        return Region_map_address(addr_t(loc) - addr_t(_rm_attach_addr));
+    }
 
     /*************************
      ** Allocator interface **

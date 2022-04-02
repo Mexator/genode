@@ -13,6 +13,16 @@ void log_wrong_fd(int err, int libc_fd);
 
 constexpr char FORM_SNAPSHOT_PREFIX[] = "FORMING SNAPSHOT";
 
+static Persalloc::Heap *_heap;
+
+void Ptcp::Snapshot::set(Persalloc::Heap *h) {
+    _heap = h;
+}
+
+Persalloc::Heap *Ptcp::Snapshot::get() {
+    return _heap;
+}
+
 struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allocator &alloc) {
     typedef Ptcp::Fd_proxy::Fd_handle Fd_handle;
 
@@ -52,14 +62,39 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allo
         }
     }
 
+    // Lwip state
+
+    auto heap = Snapshot::get();
+    if (heap == nullptr) {
+        Genode::error("heap is null! ", heap);
+    }
+    std::list<Snapshot::Lwip_state::Dataspace> dataspaces;
+    for (Persalloc::Heap::Dataspace const *ds = heap->ds_pool().first(); ds; ds = ds->next()) {
+        auto local_addr = heap->region_addr_to_local(ds->local_addr);
+        dataspaces.push_back(
+                Snapshot::Lwip_state::Dataspace{
+                        local_addr,
+                        ds->size
+                }
+        );
+        Genode::log("addr ", ds->local_addr, " size ", ds->size);
+    }
+
     Libc::Socket_state *arr = new Libc::Socket_state[states.size()];
     std::copy(states.begin(), states.end(), arr);
+
+    Lwip_state::Dataspace *arr2 = new Lwip_state::Dataspace[dataspaces.size()];
+    std::copy(dataspaces.begin(), dataspaces.end(), arr2);
+
     return Composed_state{
             Libc::Plugin_state{
                     arr,
                     static_cast<size_t>(states.size())
             },
-            LWIP_EMPTY
+            Lwip_state{
+                    arr2,
+                    static_cast<int>(dataspaces.size())
+            }
     };
 }
 

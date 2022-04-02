@@ -1,10 +1,26 @@
 #include <base/heap.h>
 #include <base/shared_object.h>
 #include <vfs/file_system_factory.h>
+#include <vfs/simple_env.h>
+#include <rm_session/connection.h>
+#include <region_map/client.h>
+#include <persalloc/pers_heap.h>
 
 #include <vfs_ptcp/sig_handlers.h>
+#include <vfs_ptcp/snapshot.h>
 #include <vfs_ptcp/load.h>
 #include <vfs_ptcp/lwip_wrapper.h>
+
+constexpr Genode::size_t SIZE = 1024 * 1024 * 16;
+
+Genode::Region_map &create_pers_region_map(Genode::Env &env, Genode::Allocator &alloc) {
+    static Genode::Rm_connection rm(env);
+
+    Genode::log("Creating region map with size ", SIZE);
+    Genode::Region_map_client *region_map = new(alloc)Genode::Region_map_client(rm.create(SIZE));
+
+    return *region_map;
+}
 
 extern "C" Vfs::File_system_factory *vfs_file_system_factory(void) {
 
@@ -18,7 +34,21 @@ extern "C" Vfs::File_system_factory *vfs_file_system_factory(void) {
         }
 
         Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override {
-            Vfs::File_system *lwip_fs = get_lwip_factory(vfs_env)->create(vfs_env, config);
+            auto &env = vfs_env.env();
+            static Genode::Sliced_heap metadata_heap(env.ram(), env.rm());
+            static Genode::Region_map &persistent_rm = create_pers_region_map(env, metadata_heap);
+            void *address = env.rm().attach_at(persistent_rm.dataspace(), 0x11000000);
+            Persalloc::Heap *heap = new(vfs_env.alloc()) Persalloc::Heap(
+                    env.ram(),
+                    persistent_rm,
+                    metadata_heap,
+                    Genode::addr_t(address));
+            Genode::warning("Heap init");
+            Ptcp::Snapshot::set(heap);
+
+            static Vfs::Simple_env lwip_env(vfs_env.env(), *heap, config);
+
+            Vfs::File_system *lwip_fs = get_lwip_factory(lwip_env)->create(lwip_env, config);
 
             // Create load manager
             Ptcp::Snapshot::Load_manager manager{vfs_env.alloc()};
