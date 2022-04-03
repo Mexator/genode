@@ -7,6 +7,10 @@
 #include <util/list.h>
 #include <util/reconstructible.h>
 
+#ifndef LOG_PERSHEAP_ALLOC
+#define LOG_PERSHEAP_ALLOC false
+#endif
+
 namespace Persalloc {
     using Genode::addr_t;
     using Genode::List;
@@ -150,7 +154,7 @@ public:
      * Allocates size bytes at addr. Later this area to be populated
      * with previously saved memory
      */
-    Alloc_result alloc_addr(size_t size, Region_map_address addr, bool add_to_local);
+    Alloc_result alloc_addr(size_t size, Region_map_address addr);
 
     /**
      * Helper for debugging

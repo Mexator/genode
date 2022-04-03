@@ -70,14 +70,13 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allo
     }
     std::list<Snapshot::Lwip_state::Dataspace> dataspaces;
     for (Persalloc::Heap::Dataspace const *ds = heap->ds_pool().first(); ds; ds = ds->next()) {
-        auto local_addr = heap->region_addr_to_local(ds->local_addr);
         dataspaces.push_back(
                 Snapshot::Lwip_state::Dataspace{
-                        local_addr,
+                        nullptr,
+                        ds->local_addr,
                         ds->size
                 }
         );
-        Genode::log("addr ", ds->local_addr, " size ", ds->size);
     }
 
     Libc::Socket_state *arr = new Libc::Socket_state[states.size()];
@@ -93,7 +92,8 @@ struct Ptcp::Snapshot::Composed_state Ptcp::Snapshot::form_snapshot(Genode::Allo
             },
             Lwip_state{
                     arr2,
-                    static_cast<int>(dataspaces.size())
+                    static_cast<int>(dataspaces.size()),
+                    (Genode::addr_t) heap->region_addr_to_local(0)
             }
     };
 }

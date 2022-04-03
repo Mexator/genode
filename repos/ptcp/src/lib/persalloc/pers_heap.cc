@@ -1,4 +1,5 @@
 #include <persalloc/pers_heap.h>
+#include <logging/mylog.h>
 
 using namespace Persalloc;
 using Genode::align_addr;
@@ -69,7 +70,7 @@ int Heap::quota_limit(size_t new_quota_limit) {
 
 Heap::Alloc_ds_result
 Heap::_allocate_dataspace(size_t size, bool use_local_addr, Region_map_address local_addr) {
-//    Genode::log("Heap::_allocate_dataspace, requested size = ", size);
+    debug_log(LOG_PERSHEAP_ALLOC, __func__, "requested size = ", size);
     using Result = Alloc_ds_result;
 
     return _ds_pool.ram_alloc->try_alloc(size).convert<Result>(
@@ -136,8 +137,8 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
 
             [&](Dataspace *ds_ptr) {
                 _quota_used += ds_ptr->size;
-//                Genode::log("rm addr ", ds_ptr->local_addr);
-//                Genode::log("local addr ", region_addr_to_local(ds_ptr->local_addr));
+                debug_log(LOG_PERSHEAP_ALLOC, "rm addr ", ds_ptr->local_addr);
+                debug_log(LOG_PERSHEAP_ALLOC, "local addr ", region_addr_to_local(ds_ptr->local_addr));
                 return region_addr_to_local(ds_ptr->local_addr);
             },
 
@@ -148,7 +149,7 @@ Allocator::Alloc_result Heap::_unsynchronized_alloc(size_t size) {
 
 
 Allocator::Alloc_result Heap::try_alloc(size_t size) {
-//    Genode::log("Heap::try_alloc, size = ", size);
+    debug_log(LOG_PERSHEAP_ALLOC, "Heap::try_alloc, size = ", size);
     if (size == 0)
         error("attempt to allocate zero-size block from heap");
 
@@ -209,7 +210,7 @@ Heap::Heap(Ram_allocator *ram_alloc,
 Heap::~Heap() {
 }
 
-Allocator::Alloc_result Heap::alloc_addr(size_t size, Region_map_address addr, bool add_to_local) {
+Allocator::Alloc_result Heap::alloc_addr(size_t size, Region_map_address addr) {
 
     /* serialize access of heap functions */
     Mutex::Guard guard(_mutex);

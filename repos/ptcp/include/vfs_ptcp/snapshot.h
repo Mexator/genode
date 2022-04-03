@@ -45,11 +45,16 @@ const Ptcp::Snapshot::Libc::Plugin_state LIBC_EMPTY{nullptr, 0};
 
 struct Ptcp::Snapshot::Lwip_state {
     struct Dataspace {
-        Persalloc::Heap::Local_address addr;
+        // Used in restore phase only
+        void *content;
+        Persalloc::Heap::Region_map_address addr;
         Genode::size_t size;
     } *dataspaces;
 
     int dataspaces_number;
+
+    // Used in snapshot phase only
+    Genode::addr_t heap_attach_addr;
 };
 const Ptcp::Snapshot::Lwip_state LWIP_EMPTY{nullptr, 0};
 
