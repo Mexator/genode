@@ -14,3 +14,7 @@
 /repos/world
 /repos/zynq
 
+.idea
+.vscode
+cmake-build-debug
+CMakeLists.txt
