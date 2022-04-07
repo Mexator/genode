@@ -51,11 +51,10 @@ int my_main(Libc::Env &env) {
         heapdump.open(heap_snap_path);
         unsigned long addr;
         Genode::size_t size;
-        bool at_local;
 
-        while (heapdump >> size >> addr >> at_local) {
+        while (heapdump >> size >> addr) {
             Genode::log("addr ", (void *) addr, " size ", size);
-            heap.alloc_addr(size, Persalloc::Heap::Region_map_address(addr), at_local);
+            heap.alloc_addr(size, Persalloc::Heap::Region_map_address(addr));
 
             printf("Before read %lx %lu \n", addr, size);
             auto local_addr = (address + Genode::addr_t(addr));
@@ -91,7 +90,7 @@ int my_main(Libc::Env &env) {
     file.open(heap_snap_path);
     for (Persalloc::Heap::Dataspace const *ds = heap.ds_pool().first(); ds; ds = ds->next()) {
         auto local_addr = (address + Genode::addr_t(ds->local_addr));
-        file << ds->size << " " << (unsigned long) ds->local_addr << " " << ds->attached_at_local;
+        file << ds->size << " " << (unsigned long) ds->local_addr << " ";
         file.write((char *) local_addr, ds->size);
         Genode::log("addr ", ds->local_addr, " size ", ds->size);
     }
