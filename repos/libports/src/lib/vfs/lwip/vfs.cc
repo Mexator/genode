@@ -27,6 +27,8 @@
 #include <lwip/genode_init.h>
 #include <lwip/nic_netif.h>
 
+#include <vfs_collection/myenv.h>
+
 namespace Lwip {
 extern "C" {
 #include <lwip/udp.h>
@@ -2111,9 +2113,11 @@ extern "C" Vfs::File_system_factory *vfs_file_system_factory(void)
 
 		Vfs::File_system *create(Vfs::Env &vfs_env, Genode::Xml_node config) override
 		{
+            auto &env = dynamic_cast<TwoAllocEnv &>(vfs_env);
+
 			if (!timer.constructed()) {
 				timer.construct(vfs_env.env(), "vfs_lwip");
-				Lwip::genode_init(vfs_env.alloc(), *timer);
+				Lwip::genode_init(env.persalloc(), *timer);
 			}
 
 			return new (vfs_env.alloc()) Lwip::File_system(vfs_env, config);

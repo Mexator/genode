@@ -1019,6 +1019,7 @@ extern "C" int socket_fs_setsockopt(int libc_fd, int level, int optname,
             {
                 socket_state state = *(socket_state *)optval;
                 context->state((Context::State)state.state);
+                return 0;
             }
 		default: return Errno(ENOPROTOOPT);
 		}

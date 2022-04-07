@@ -10,6 +10,7 @@
 #include <vfs_ptcp/snapshot.h>
 #include <vfs_ptcp/load.h>
 #include <vfs_ptcp/lwip_wrapper.h>
+#include <vfs_collection/myenv.h>
 
 constexpr Genode::size_t SIZE = 1024 * 1024 * 16;
 
@@ -46,10 +47,9 @@ extern "C" Vfs::File_system_factory *vfs_file_system_factory(void) {
             Genode::warning("Heap init");
             Ptcp::Snapshot::set(heap);
 
-            static Vfs::Simple_env lwip_env(vfs_env.env(), *heap, config);
+            static TwoAllocEnv lwip_env(vfs_env.env(), vfs_env.alloc(), *heap, config);
 
-            Vfs::File_system *lwip_fs = get_lwip_factory(lwip_env)->create(lwip_env, config);
-
+            Vfs::File_system *lwip_fs = get_lwip_factory(vfs_env)->create(lwip_env, config);
             // Create load manager
             Ptcp::Snapshot::Load_manager manager{vfs_env.alloc()};
             // Create FS
