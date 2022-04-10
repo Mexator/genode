@@ -2,6 +2,7 @@ set build_components {
     test/ptcp_test
     lib/vfs/lwip
     lib/vfs_ptcp
+    app/nic_trickster
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -61,6 +62,7 @@ append config {
         <config dhcp_discover_timeout_sec="1">
 
         <policy label_prefix="ptcp_test" domain="downlink"/>
+        <policy label_prefix="nic_trickster" domain="downlink"/>
         <policy label_prefix="drivers"           domain="uplink"/>
 
         <domain name="uplink" interface="172.20.0.25/16">
@@ -92,11 +94,30 @@ append config {
 append_platform_drv_config
 
 append config {
+    <start name="nic_trickster" caps="200">
+    		<resource name="RAM" quantum="10M"/>
+    		<provides><service name="Nic"/></provides>
+    		<config uplink="uplink"
+    		        downlink="app"
+    		        time="no"
+    		        default="name"
+    		        eth="no"
+    		        arp="no"
+    		        ipv4="default"
+    		        dhcp="no"
+    		        udp="no"
+    		        icmp="no"
+    		        tcp="all" />
+    		<route>
+    			<service name="Nic"> <child name="nic_router"/> </service>
+    			<any-service> <parent/> <any-child/> </any-service>
+    		</route>
+    	</start>
 
     <start name="ptcp_test" caps="1200" priority="-1">
         <resource name="RAM" quantum="100M"/>
         <route>
-            <service name="Nic"> <child name="nic_router"/> </service>
+            <service name="Nic"> <child name="nic_trickster"/> </service>
             <any-service> <parent/> <any-child/> </any-service>
         </route>
         <config  verbose="yes" ld_verbose="yes" >
@@ -114,7 +135,7 @@ install_config $config
 build_boot_image {
     libc.lib.so libm.lib.so stdcxx.lib.so
     vfs_lwip.lib.so
-    vfs_ptcp.lib.so ptcp_test
+    vfs_ptcp.lib.so ptcp_test nic_trickster
 }
 
 # qemu config
