@@ -2,6 +2,11 @@ set build_components {
     test/ptcp_test
     lib/vfs/lwip
     lib/vfs_ptcp
+
+    app/gdb_monitor
+    lib/gdbserver_platform-nova
+    drivers/uart
+    lib/vfs/pipe
 }
 
 source ${genode_dir}/repos/base/run/platform_drv.inc
@@ -15,7 +20,9 @@ import_from_depot [depot_user]/src/[base_src] \
                   [depot_user]/src/init \
                   [depot_user]/src/nic_router \
                   [depot_user]/src/platform_drv \
-                  [depot_user]/src/vfs
+                  [depot_user]/src/vfs \
+                  [depot_user]/src/acpi_drv \
+                  [depot_user]/src/ahci_drv
 
 append config {
 <config verbose="yes" prio_levels="2">
@@ -60,7 +67,7 @@ append config {
         </provides>
         <config dhcp_discover_timeout_sec="1">
 
-        <policy label_prefix="ptcp_test" domain="downlink"/>
+        <policy label_prefix="gdb_monitor" domain="downlink"/>
         <policy label_prefix="drivers"           domain="uplink"/>
 
         <domain name="uplink" interface="172.20.0.25/16">
@@ -92,30 +99,67 @@ append config {
 append_platform_drv_config
 
 append config {
+    <start name="pc_uart_drv">
+        <resource name="RAM" quantum="2M"/>
+        <provides>
+            <service name="Terminal"/>
+            <service name="Uart"/>
+        </provides>
+        <config>
+            <policy label_prefix="gdb_monitor" uart="1"/>
+        </config>
+    </start>
 
-    <start name="ptcp_test" caps="1200" priority="-1">
-        <resource name="RAM" quantum="100M"/>
+    <start name="gdb_monitor" caps="3000" priority="-1">
+        <resource name="RAM" quantum="500M"/>
         <route>
             <service name="Nic"> <child name="nic_router"/> </service>
             <any-service> <parent/> <any-child/> </any-service>
         </route>
-        <config  verbose="yes" ld_verbose="yes" >
-            <vfs>
-                <dir name="dev">    <log/>             </dir>
-                <dir name="socket"> <ptcp dhcp="yes"/> </dir>
-            </vfs>
-            <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
+        <config>
+        <preserve name="RAM" quantum="100M"/>
+        <target name="ptcp_test" caps="1200">
+            <config  verbose="yes" ld_verbose="yes" >
+                <vfs>
+                   <dir name="dev">    <log/>             </dir>
+                   <dir name="socket"> <ptcp dhcp="yes"/> </dir>
+               </vfs>
+               <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
+            </config>
+        </target>
+        <vfs>
+            <dir name="dev">
+                <log/>
+                <terminal raw="yes"/>
+                <inline name="rtc">2021-01-01 00:01</inline>
+            </dir>
+            <dir name="pipe"> <pipe/> </dir>
+        </vfs>
+        <libc stdout="/dev/log" stderr="/dev/log" pipe="/pipe" rtc="/dev/rtc"/>
         </config>
     </start>
 </config>
 }
 
 install_config $config
+
+proc binary_name_gdbserver_platform_lib_so { } {
+        return "gdbserver_platform-$::env(KERNEL).lib.so"
+}
+
 build_boot_image {
     libc.lib.so libm.lib.so stdcxx.lib.so
     vfs_lwip.lib.so
     vfs_ptcp.lib.so ptcp_test
+
+    pc_uart_drv vfs_pipe.lib.so
+    gdb_monitor gdbserver_platform.lib.so
 }
+#
+# Execute test case
+#
+#
+set local_port 5555
 
 # qemu config
 set qemu_args ""
@@ -125,8 +169,37 @@ append qemu_args " -display none "
 # connect comport 0 to stdio
 append qemu_args " -serial stdio "
 
+# connect comport 1 with TCP port $local_port
+append qemu_args " -serial chardev:uart "
+append qemu_args " -chardev socket,id=uart,port=$local_port,host=localhost,server,nowait,ipv4 "
+
 set macaddr "52:54:22:db:5a:70"
 append qemu_args " -netdev tap,id=net1,script=no,downscript=no,ifname=tap0 "
 append qemu_args " -net nic,model=e1000,netdev=net1,macaddr=$macaddr "
 
-run_genode_until forever
+run_genode_until {.*Remote debugging using /dev/terminal.*} 30
+
+puts "GDB monitor is up, starting GDB in a new terminal"
+
+source ${genode_dir}/repos/ports/run/gdb_monitor.inc
+
+# GDB loads symbols from 'debug/ld.lib.so'
+if { [have_spec nova] } {
+	exec ln -sf ld-nova.lib.so debug/ld.lib.so
+}
+
+set gdb_target_binary "ptcp_test"
+
+# sequence of GDB commands to execute at startup
+append gdb_cmds "-ex \"target remote localhost:$local_port\" "
+
+append gdb_cmds [gdb_initial_breakpoint_cmds $gdb_target_binary]
+
+# ask the user for confirmations again
+append gdb_cmds {-ex "set interactive-mode auto" }
+
+puts "command: [gdb] debug/ld.lib.so $gdb_cmds"
+
+exec [terminal] -e "bash -lc \'[gdb] debug/ld.lib.so $gdb_cmds\'" &
+
+interact -i [output_spawn_id]
