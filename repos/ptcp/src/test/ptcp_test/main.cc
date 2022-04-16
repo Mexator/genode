@@ -1,3 +1,4 @@
+#include <base/heap.h>
 #include <libc/component.h>
 
 // socket api
@@ -10,14 +11,21 @@
 #include <cstdio>
 #include <arpa/inet.h>
 
+#include <vfs_ptcp/fd_proxy.h>
+
 using Genode::log;
 using Genode::warning;
 using Genode::error;
+using Ptcp::Fd_proxy;
+
+void init(Genode::Allocator &alloc) {
+    fd_proxy.construct(alloc);
+}
 
 void _main(Libc::Env *env) {
     warning("_main");
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
+    Fd_proxy::Pfd sock = fd_proxy->supervised_socket(AF_INET, SOCK_STREAM, 0);
+    if (fd_proxy->map_fd(sock) == -1) {
         error("failed opening socket, errno=", errno);
         return;
     }
@@ -27,13 +35,13 @@ void _main(Libc::Env *env) {
     in_addr.sin_family = AF_INET;
     in_addr.sin_port = htons(80);
     in_addr.sin_addr.s_addr = INADDR_ANY;
-    if (0 != bind(sock, (struct sockaddr *) &in_addr, sizeof(in_addr))) {
+    if (0 != bind(fd_proxy->map_fd(sock), (struct sockaddr *) &in_addr, sizeof(in_addr))) {
         error("while calling bind(), errno=", errno);
         return;
     }
     log("Socket bound");
 
-    if (0 != listen(sock, 1)) {
+    if (0 != listen(fd_proxy->map_fd(sock), 1)) {
         error("while calling listen(), errno=", errno);
     }
     log("Socket listens");
@@ -45,7 +53,7 @@ void _main(Libc::Env *env) {
         struct sockaddr_in incoming_addr;
         socklen_t sock_len = sizeof(sockaddr_in);
 
-        int i = accept(sock, (sockaddr *) &incoming_addr, &sock_len);
+        int i = accept(fd_proxy->map_fd(sock), (sockaddr *) &incoming_addr, &sock_len);
 
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr, sizeof(in_addr)));
 
@@ -60,6 +68,8 @@ void _main(Libc::Env *env) {
 void Libc::Component::construct(Libc::Env &env) {
     log(__func__);
     with_libc([&]() {
+        static Genode::Heap heap(env.ram(), env.rm());
+        init(heap);
         pthread_t t;
         pthread_create(&t, nullptr, (void *(*)(void *)) (_main), &env);
     });
