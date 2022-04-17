@@ -14,7 +14,7 @@
 #include <logging/mylog.h>
 
 #ifndef FD_PROXY_DEBUG
-#define FD_PROXY_DEBUG true
+#define FD_PROXY_DEBUG false
 #endif
 
 namespace Ptcp {
@@ -30,7 +30,10 @@ private:
     struct Fd_handle;
     typedef Genode::Id_space<Fd_handle> Fd_space;
     typedef Fd_space::Element Fd_element;
-
+public:
+    // Persistent file descriptor. Is valid even after restart
+    typedef Fd_space::Id Pfd;
+private:
     // Wrapper to allow deleting of objects (see repos/libports/include/libc-plugin/fd_alloc.h)
     // I have a little idea how it works. But it does.
     struct Fd_handle {
@@ -89,19 +92,12 @@ private:
     }
 
 public:
-    // Persistent file descriptor. Is valid even after restart
-    typedef Fd_space::Id Pfd;
 
     explicit Fd_proxy(Genode::Allocator &alloc) : _alloc(alloc), socket_creation_mutex() {}
 
-    Fd_space::Id supervised_socket(int domain, int type, int protocol) {
-        debug_log(FD_PROXY_DEBUG, __func__);
-        Genode::Mutex::Guard _(socket_creation_mutex);
-        int libc_fd = socket(domain, type, protocol);
-        Pfd pfd = register_fd(libc_fd);
-        // TODO actually supervise socket
-        return pfd;
-    }
+    Pfd supervised_socket(int domain, int type, int protocol);
+    Pfd accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen);
+    void close(Pfd &sockfd);
 
     /**
      * Retrieve libc file descriptor by fd handle

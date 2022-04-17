@@ -135,7 +135,7 @@ install_config $config
 build_boot_image {
     libc.lib.so libm.lib.so stdcxx.lib.so
     vfs_lwip.lib.so
-    vfs_ptcp.lib.so ptcp_test nic_trickster
+    vfs_ptcp.lib.so ptcp_client.lib.so ptcp_test nic_trickster
 }
 
 # qemu config

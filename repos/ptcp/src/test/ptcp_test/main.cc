@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <arpa/inet.h>
 
-#include <vfs_ptcp/fd_proxy.h>
+#include <ptcp_client/fd_proxy.h>
 
 using Genode::log;
 using Genode::warning;
@@ -53,7 +53,8 @@ void _main(Libc::Env *env) {
         struct sockaddr_in incoming_addr;
         socklen_t sock_len = sizeof(sockaddr_in);
 
-        int i = accept(fd_proxy->map_fd(sock), (sockaddr *) &incoming_addr, &sock_len);
+        Fd_proxy::Pfd accept_fd = fd_proxy->accept(sock, (sockaddr *) &incoming_addr, &sock_len);
+        int i = fd_proxy->map_fd(accept_fd);
 
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr, sizeof(in_addr)));
 
@@ -61,7 +62,7 @@ void _main(Libc::Env *env) {
         printf("Read: %s \n", rcvd_msg);
         write(i, message, sizeof(message));
         sleep(4);
-        close(i);
+        fd_proxy->close(accept_fd);
     }
 }
 
