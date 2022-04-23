@@ -30,7 +30,7 @@ Net::Uplink::Uplink(Env &env,
         :
         Nic::Packet_allocator{&alloc},
         Nic::Connection{env, this, BUF_SIZE, BUF_SIZE},
-        Net::Interface{env.ep(), config.attribute_value("uplink", Interface_label()),
+        Net::Interface{env, alloc, config.attribute_value("uplink", Interface_label()),
                        timer, curr_time, config.attribute_value("time", false),
                        config} {
     rx_channel()->sigh_ready_to_ack(_sink_ack);

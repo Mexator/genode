@@ -17,6 +17,7 @@
 /* local includes */
 #include "pointer.h"
 #include "packet_log.h"
+#include "threading/submit_thread.h"
 
 /* Genode includes */
 #include <nic_session/nic_session.h>
@@ -40,6 +41,7 @@ namespace Net {
 
 
 class Net::Interface {
+    friend Submitter;
 protected:
 
     using Signal_handler = Genode::Signal_handler<Interface>;
@@ -48,6 +50,8 @@ protected:
     Signal_handler _sink_submit;
     Signal_handler _source_ack;
     Signal_handler _source_submit;
+    Genode::Mutex sub_mut;
+    Submitter_factory _submit_factory;
 
 private:
 
@@ -84,7 +88,8 @@ private:
 
 public:
 
-    Interface(Genode::Entrypoint &ep,
+    Interface(Genode::Env &env,
+              Genode::Allocator &allocator,
               Interface_label label,
               Timer::Connection &timer,
               Genode::Duration &curr_time,

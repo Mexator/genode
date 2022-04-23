@@ -9,6 +9,9 @@
 #include <ptcp_client/socket_state.h>
 #include <ptcp_client/fd_proxy.h>
 
+// Nic control includes
+#include <nic_trickster/control/session.h>
+
 // Debug includes
 #include <logging/mylog.h>
 
@@ -25,21 +28,29 @@ class Socket_supervisor {
     class Socket_md_node : public Genode::Avl_node<Socket_md_node> {
     public:
         socket_entry &_entry;
+
         explicit Socket_md_node(socket_entry &entry) : _entry(entry) {}
-        bool higher(Socket_md_node* node) {
+
+        bool higher(Socket_md_node *node) {
             return _entry.ptcpId.id > node->_entry.ptcpId.id;
         }
     };
 
     Genode::Allocator &_md_alloc;
     Genode::Avl_tree<Socket_md_node> _sockets;
+    Nic_control::Connection &_conn;
 
 public:
-    explicit Socket_supervisor(Genode::Allocator &alloc);
+    Socket_supervisor(
+            Genode::Allocator &alloc,
+            Nic_control::Connection &conn
+    );
 
     void supervise(socket_entry &entry);
 
     void abandon(Ptcp::Fd_proxy::Pfd &fd);
+
+    void dump();
 };
 
 extern Socket_supervisor *socket_supervisor;

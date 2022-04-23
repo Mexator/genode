@@ -12,14 +12,33 @@
 #include <arpa/inet.h>
 
 #include <ptcp_client/fd_proxy.h>
+#include <ptcp_client/socket_supervisor.h>
+#include <nic/packet_allocator.h>
+#include <nic_trickster/control/stopper.h>
 
 using Genode::log;
 using Genode::warning;
 using Genode::error;
 using Ptcp::Fd_proxy;
 
-void init(Genode::Allocator &alloc) {
+void init(Genode::Env &env, Genode::Allocator &alloc) {
     fd_proxy.construct(alloc);
+
+    Genode::log("Creating Nic_control connection...");
+    Nic_control::Connection *conn = new(alloc) Nic_control::Connection(env);
+    Genode::log("Nic_control Connected!");
+
+    socket_supervisor = new(alloc) Socket_supervisor(alloc, *conn);
+}
+
+void *dump_fn(void *) {
+    socket_supervisor->dump();
+    return nullptr;
+}
+
+void dump() {
+    pthread_t t;
+    pthread_create(&t, nullptr, dump_fn, nullptr);
 }
 
 void _main(Libc::Env *env) {
@@ -61,7 +80,8 @@ void _main(Libc::Env *env) {
         read(i, rcvd_msg, sizeof(rcvd_msg));
         printf("Read: %s \n", rcvd_msg);
         write(i, message, sizeof(message));
-        sleep(4);
+        sleep(1);
+        dump();
         fd_proxy->close(accept_fd);
     }
 }
@@ -70,7 +90,7 @@ void Libc::Component::construct(Libc::Env &env) {
     log(__func__);
     with_libc([&]() {
         static Genode::Heap heap(env.ram(), env.rm());
-        init(heap);
+        init(env, heap);
         pthread_t t;
         pthread_create(&t, nullptr, (void *(*)(void *)) (_main), &env);
     });

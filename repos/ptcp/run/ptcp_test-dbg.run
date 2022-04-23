@@ -114,7 +114,10 @@ append config {
 
     <start name="nic_trickster" caps="200">
         		<resource name="RAM" quantum="10M"/>
-        		<provides><service name="Nic"/></provides>
+        		<provides>
+                    <service name="Nic"/>
+                    <service name="Nic_control"/>
+                </provides>
         		<config uplink="uplink"
         		        downlink="app"
         		        time="no"

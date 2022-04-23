@@ -19,6 +19,7 @@
 
 /* local includes */
 #include "component.h"
+#include <nic_trickster/control/stopper.h>
 
 using namespace Net;
 using namespace Genode;
@@ -32,6 +33,7 @@ private:
     Duration _curr_time{Microseconds(0)};
     Heap _heap;
     Net::Root _root;
+    Stopper_root _stopper;
 
 public:
 
@@ -42,8 +44,11 @@ public:
 Main::Main(Env &env)
         :
         _config(env, "config"), _timer(env), _heap(&env.ram(), &env.rm()),
-        _root(env, _heap, _config.xml(), _timer, _curr_time) {
+        _root(env, _heap, _config.xml(), _timer, _curr_time),
+        _stopper(env.ep(), _heap) {
+    env.exec_static_constructors();
     env.parent().announce(env.ep().manage(_root));
+    env.parent().announce(env.ep().manage(_stopper));
 }
 
 

@@ -10,6 +10,7 @@
 #include <ptcp_client/socket_state.h>
 #include <ptcp_client/socket_supervisor.h>
 #include <ptcp_client/supervisor_helper.h>
+#include <ptcp_client/ptcp_lock.h>
 
 // Debug includes
 #include <logging/mylog.h>
@@ -25,9 +26,7 @@ namespace Ptcp {
 struct Supervision_delegate {
     Genode::Allocator &_alloc;
 
-    Supervision_delegate(Genode::Allocator &alloc) : _alloc(alloc) {
-        socket_supervisor = new(_alloc) Socket_supervisor(_alloc);
-    }
+    Supervision_delegate(Genode::Allocator &alloc) : _alloc(alloc) {}
 
     void on_open(const char *path) {
         Genode::Path<Vfs::MAX_PATH_LEN> gpath(path); // XXX is 128 enough? Maybe there is some constant with max path length
@@ -45,7 +44,7 @@ struct Supervision_delegate {
 class Ptcp::Vfs_wrapper : public Vfs::Proxy_fs {
     Supervision_delegate delegate;
 public:
-    Vfs_wrapper(Vfs::Env &env, File_system &lwip_fs) : Vfs::Proxy_fs(lwip_fs), delegate(env.alloc()) {}
+    Vfs_wrapper(Vfs::Env &env, File_system &lwip_fs) : Vfs::Proxy_fs(lwip_fs, Ptcp::mutex), delegate(env.alloc()) {}
 
     Open_result open(const char *path, unsigned int mode, Vfs::Vfs_handle **handle, Genode::Allocator &alloc) override {
         auto result = Proxy_fs::open(path, mode, handle, alloc);

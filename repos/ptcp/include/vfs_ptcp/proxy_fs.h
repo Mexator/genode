@@ -56,12 +56,14 @@ private:
 
 /**
  * File system that delegates all calls to another filesystem
+ * Calls to the backing fs are executed under mutex
  */
 class Vfs::Proxy_fs : public Vfs::File_system {
 private:
     Vfs::File_system &_fs;
+    Genode::Mutex &_mutex;
 public:
-    explicit Proxy_fs(Vfs::File_system &fs) : _fs{fs} {}
+    explicit Proxy_fs(Vfs::File_system &fs, Genode::Mutex &mutex) : _fs{fs}, _mutex(mutex) {}
 
     Stat_result stat(const char *path, Stat &) override;
 

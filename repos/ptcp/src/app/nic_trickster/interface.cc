@@ -14,6 +14,8 @@
 /* local includes */
 #include "interface.h"
 #include "packet_log.h"
+#include <base/heap.h>
+#include <nic_trickster/control/stopper.h>
 
 /* Genode includes */
 #include <net/ethernet.h>
@@ -66,21 +68,8 @@ void Net::Interface::_send(Ethernet_frame &eth, Genode::size_t const size) {
 
 
 void Net::Interface::_ready_to_submit() {
-    while (_sink().packet_avail()) {
-
-        Packet_descriptor const pkt = _sink().get_packet();
-        if (!pkt.size() || !_sink().packet_valid(pkt)) {
-            continue;
-        }
-
-        _handle_eth(_sink().packet_content(pkt), pkt.size(), pkt);
-
-        if (!_sink().ready_to_ack()) {
-            error("ack state FULL");
-            return;
-        }
-        _sink().acknowledge_packet(pkt);
-    }
+    Genode::Mutex::Guard _(sub_mut);
+    _submit_factory.start_submitter_thread();
 }
 
 
@@ -91,17 +80,20 @@ void Net::Interface::_ready_to_ack() {
 }
 
 
-Net::Interface::Interface(Entrypoint &ep,
+Net::Interface::Interface(Env &env,
+                          Allocator &allocator,
                           Interface_label label,
                           Timer::Connection &timer,
                           Duration &curr_time,
                           bool log_time,
                           Xml_node config)
         :
-        _sink_ack{ep, *this, &Interface::_ack_avail},
-        _sink_submit{ep, *this, &Interface::_ready_to_submit},
-        _source_ack{ep, *this, &Interface::_ready_to_ack},
-        _source_submit{ep, *this, &Interface::_packet_avail},
+        _sink_ack{env.ep(), *this, &Interface::_ack_avail},
+        _sink_submit{env.ep(), *this, &Interface::_ready_to_submit},
+        _source_ack{env.ep(), *this, &Interface::_ready_to_ack},
+        _source_submit{env.ep(), *this, &Interface::_packet_avail},
+        sub_mut{},
+        _submit_factory{*this, env, allocator},
         _label{label},
         _timer{timer},
         _curr_time{curr_time},
@@ -114,3 +106,4 @@ Net::Interface::Interface(Entrypoint &ep,
                  config.attribute_value("udp", _default_log_style),
                  config.attribute_value("icmp", _default_log_style),
                  config.attribute_value("tcp", _default_log_style)} {}
+

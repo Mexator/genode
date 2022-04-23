@@ -96,6 +96,10 @@ private:
 
 public:
 
+    // Nic_trickster consumes capabilities for Nic_connection
+    // + 1 CPU capability for running a blockable submitter thread in background
+    enum { CAP_QUOTA = Nic::Connection::CAP_QUOTA + 1};
+
     Session_component(Genode::Ram_quota ram_quota,
                       Genode::Cap_quota cap_quota,
                       Genode::size_t tx_buf_size,
