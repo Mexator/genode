@@ -29,9 +29,9 @@ struct Supervision_delegate {
     Supervision_delegate(Genode::Allocator &alloc) : _alloc(alloc) {}
 
     void on_open(const char *path) {
-        Genode::Path<Vfs::MAX_PATH_LEN> gpath(path); // XXX is 128 enough? Maybe there is some constant with max path length
+        Genode::Path<Vfs::MAX_PATH_LEN> gpath(path);
 
-        socket_entry *sock = new(_alloc) socket_entry(path);
+        socket_entry *sock = new(_alloc) socket_entry();
         if (gpath == "/tcp/new_socket") {
             supervisor_helper->set_pending_entry(*sock);
         }

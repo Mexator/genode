@@ -74,15 +74,6 @@ private:
     }
 
     /**
-     * Register [proxy_fd] as alias for [libc_fd].
-     * Used only for restoration
-     */
-    void set(int libc_fd, int proxy_fd) {
-        debug_log(FD_PROXY_DEBUG, "set proxy_fd=", proxy_fd, " to libc_fd=", libc_fd);
-        new(_alloc) Fd_handle(libc_fd, proxy_fd, fd_space);
-    }
-
-    /**
      * Register [libc_fd] and returns handle to it
      */
     Fd_space::Id register_fd(int libc_fd) {
@@ -95,6 +86,11 @@ public:
 
     explicit Fd_proxy(Genode::Allocator &alloc) : _alloc(alloc), socket_creation_mutex() {}
 
+    /**
+     * Register [proxy_fd] as alias for [libc_fd].
+     * Used only for restoration
+     */
+    void set(int libc_fd, int proxy_fd);
     Pfd supervised_socket(int domain, int type, int protocol);
     Pfd accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen);
     void close(Pfd &sockfd);

@@ -12,12 +12,14 @@ struct ptcp_id {
     unsigned long id;
 };
 
+/**
+ * Runtime socket tracking metadata
+ */
 struct socket_entry {
 
     ptcp_id ptcpId; // id in fd_proxy
-    const char *fsPath; // to track child VFS handles in open(call)
 
-    socket_entry(const char *path);
+    socket_entry();
     void print(Genode::Output &out) const;
 };
 

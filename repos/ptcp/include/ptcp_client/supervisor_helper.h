@@ -22,7 +22,7 @@ public:
 
     void set_pending_entry(socket_entry &metadata);
 
-    void assign_id(Ptcp::Fd_proxy::Pfd &fd);
+    void submit_entry(Ptcp::Fd_proxy::Pfd &fd);
 
     void close(Ptcp::Fd_proxy::Pfd &fd);
 };

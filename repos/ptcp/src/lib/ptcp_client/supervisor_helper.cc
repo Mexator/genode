@@ -3,7 +3,7 @@
 
 Supervisor_helper::Supervisor_helper(Socket_supervisor &supervisor) : _md(nullptr), _socket_supervisor(supervisor) {}
 
-void Supervisor_helper::assign_id(Ptcp::Fd_proxy::Pfd &fd) {
+void Supervisor_helper::submit_entry(Ptcp::Fd_proxy::Pfd &fd) {
     if (_md == nullptr)
         Genode::error(__func__, " no pending entry to assign id");
     _md->ptcpId = ptcp_id{true, fd.value};

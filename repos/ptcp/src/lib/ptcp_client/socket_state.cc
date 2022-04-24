@@ -1,8 +1,7 @@
 // Ptcp includes
 #include <ptcp_client/socket_state.h>
 
-socket_entry::socket_entry(const char *path) : ptcpId({false, 0}),
-                                               fsPath(path) {}
+socket_entry::socket_entry() : ptcpId{false, 0} {}
 
 void socket_entry::print(Genode::Output &out) const {
     if (ptcpId.known)

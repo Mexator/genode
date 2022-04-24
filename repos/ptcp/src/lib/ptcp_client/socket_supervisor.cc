@@ -2,6 +2,7 @@
 #include <ptcp_client/ptcp_lock.h>
 #include <ptcp_client/socket_supervisor.h>
 #include <ptcp_client/supervisor_helper.h>
+#include <ptcp_client/serialized/serialized_socket_state.h>
 
 Socket_supervisor::Socket_supervisor(
         Genode::Allocator &alloc,
@@ -23,7 +24,6 @@ void Socket_supervisor::abandon(Ptcp::Fd_proxy::Pfd &fd) {
         debug_log(SOCKET_SUPERVISOR_DEBUG, "node ", &node);
         debug_log(SOCKET_SUPERVISOR_DEBUG, "known ", node._entry.ptcpId.known);
         debug_log(SOCKET_SUPERVISOR_DEBUG, "id ", node._entry.ptcpId.id);
-        debug_log(SOCKET_SUPERVISOR_DEBUG, "path ", node._entry.fsPath);
 
         auto id = node._entry.ptcpId;
         if (id.known) {
@@ -38,19 +38,29 @@ void Socket_supervisor::abandon(Ptcp::Fd_proxy::Pfd &fd) {
     _sockets.remove(result);
 }
 
-void Socket_supervisor::dump() {
-    /* While dumping we need
+void Socket_supervisor::dump(std::ostream &out) {
+    /*
+     * While dumping we need
      * 1) Block all outgoing sends. To do this I simply lock mutex used by my VFS plugin
      * 2) Block all incoming packets. This is not that simple, as I do not want them to be ACKed by TCP.
      *    To overcome this, I created proxy NIC component that stops submitting packets to clients after suspend() call
      */
     Genode::Mutex::Guard _(Ptcp::mutex);
     _conn.suspend();
-    debug_log(SOCKET_SUPERVISOR_DEBUG, "socket_supervisor: Dumping...");
+    debug_log(SOCKET_SUPERVISOR_SAVE_LOG , "socket_supervisor: Dumping...");
 
-    // TODO actual work
+    int count = 0;
+    _sockets.for_each([&](const Socket_md_node &) {
+        count++;
+    });
+    out << count << "\n";
+    _sockets.for_each([&](const Socket_md_node &node) {
+        auto entry = node._entry;
+        serialized_socket sock{entry.ptcpId.id};
+        sock.save(out);
+    });
 
-    debug_log(SOCKET_SUPERVISOR_DEBUG, "Socket_supervisor: dump done");
+    debug_log(SOCKET_SUPERVISOR_SAVE_LOG, "Socket_supervisor: dump done");
     _conn.resume();
 }
 

@@ -9,10 +9,12 @@
 #include <pthread.h>
 #include <errno.h>
 #include <cstdio>
+#include <fstream>
 #include <arpa/inet.h>
 
 #include <ptcp_client/fd_proxy.h>
 #include <ptcp_client/socket_supervisor.h>
+#include <ptcp_client/serialized/serialized_socket_state.h>
 #include <nic/packet_allocator.h>
 #include <nic_trickster/control/stopper.h>
 
@@ -31,14 +33,50 @@ void init(Genode::Env &env, Genode::Allocator &alloc) {
     socket_supervisor = new(alloc) Socket_supervisor(alloc, *conn);
 }
 
-void *dump_fn(void *) {
-    socket_supervisor->dump();
-    return nullptr;
+void restore_sockets_state() {
+    std::fstream snapshot;
+    snapshot.open("/snapshot/sockets");
+    if (!snapshot.is_open()) {
+        snapshot.close();
+        Genode::warning("Can't open snapshot");
+        return;
+    }
+
+    // Read
+    int len = 0;
+    snapshot >> len;
+    Genode::warning("len ", len);
+    if (len == 0) {
+        snapshot.close();
+        return;
+    }
+    serialized_socket entries[len];
+    for (int i = 0; i < len; ++i) {
+        Genode::warning("load ", i);
+        entries[i] = serialized_socket::load(snapshot);
+    }
+
+    // Reopen
+    for (int i = 0; i < len; ++i) {
+        Genode::warning("open ", i);
+        int libc_fd = socket(AF_INET, SOCK_STREAM, 0);
+        fd_proxy->set(libc_fd, entries[i].pfd);
+    }
+
+    // Restore state
+    // TODO
+
+    snapshot.close();
 }
 
-void dump() {
-    pthread_t t;
-    pthread_create(&t, nullptr, dump_fn, nullptr);
+[[noreturn]] void dump_loop() {
+    while (true) {
+        sleep(5);
+        std::ofstream snapshot;
+        snapshot.open("/snapshot/sockets");
+        socket_supervisor->dump(snapshot);
+        snapshot.close();
+    }
 }
 
 void _main(Libc::Env *env) {
@@ -81,7 +119,6 @@ void _main(Libc::Env *env) {
         printf("Read: %s \n", rcvd_msg);
         write(i, message, sizeof(message));
         sleep(1);
-        dump();
         fd_proxy->close(accept_fd);
     }
 }
@@ -91,6 +128,9 @@ void Libc::Component::construct(Libc::Env &env) {
     with_libc([&]() {
         static Genode::Heap heap(env.ram(), env.rm());
         init(env, heap);
+        restore_sockets_state();
+        pthread_t dumper;
+        pthread_create(&dumper, nullptr, (void *(*)(void *)) (dump_loop), &env);
         pthread_t t;
         pthread_create(&t, nullptr, (void *(*)(void *)) (_main), &env);
     });

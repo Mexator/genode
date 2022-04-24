@@ -14,6 +14,7 @@
 /repos/world
 /repos/zynq
 
+*.raw
 .idea
 .vscode
 cmake-build-debug

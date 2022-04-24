@@ -15,8 +15,15 @@
 // Debug includes
 #include <logging/mylog.h>
 
+// Libcxx includes
+#include <iostream>
+
 #ifndef SOCKET_SUPERVISOR_DEBUG
 #define SOCKET_SUPERVISOR_DEBUG false
+#endif
+
+#ifndef SOCKET_SUPERVISOR_SAVE_LOG
+#define SOCKET_SUPERVISOR_SAVE_LOG true
 #endif
 
 /**
@@ -50,7 +57,7 @@ public:
 
     void abandon(Ptcp::Fd_proxy::Pfd &fd);
 
-    void dump();
+    void dump(std::ostream &out);
 };
 
 extern Socket_supervisor *socket_supervisor;
