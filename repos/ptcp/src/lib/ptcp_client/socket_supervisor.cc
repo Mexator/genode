@@ -47,7 +47,7 @@ void Socket_supervisor::dump(std::ostream &out) {
      */
     Genode::Mutex::Guard _(Ptcp::mutex);
     _conn.suspend();
-    debug_log(SOCKET_SUPERVISOR_SAVE_LOG , "socket_supervisor: Dumping...");
+    debug_log(SOCKET_SUPERVISOR_SAVE_LOG, "socket_supervisor: Dumping...");
 
     int count = 0;
     _sockets.for_each([&](const Socket_md_node &) {
@@ -56,12 +56,32 @@ void Socket_supervisor::dump(std::ostream &out) {
     out << count << "\n";
     _sockets.for_each([&](const Socket_md_node &node) {
         auto entry = node._entry;
-        serialized_socket sock{entry.ptcpId.id};
+        serialized_socket sock{entry.ptcpId.id, entry.boundAddress};
         sock.save(out);
     });
 
     debug_log(SOCKET_SUPERVISOR_SAVE_LOG, "Socket_supervisor: dump done");
     _conn.resume();
+}
+
+socket_entry *Socket_supervisor::get_entry_for(const char *path) {
+    socket_entry *found = nullptr;
+    _sockets.for_each([&](const Socket_md_node &node) {
+        auto &socket = node._entry;
+        if (0 == Genode::strcmp(path, socket.socketPath.string(), socket.pathLen)) {
+            found = &socket;
+        }
+    });
+    return found;
+}
+
+socket_entry *Socket_supervisor::get_entry_for(Vfs::Vfs_handle &handle) {
+    socket_entry *found = nullptr;
+    _sockets.for_each([&](const Socket_md_node &node) {
+        auto &socket = node._entry;
+        if (socket.belongs_to_this(handle)) found = &socket;
+    });
+    return found;
 }
 
 Socket_supervisor *socket_supervisor;

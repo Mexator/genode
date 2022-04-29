@@ -24,6 +24,10 @@ public:
 
     void submit_entry(Ptcp::Fd_proxy::Pfd &fd);
 
+    socket_entry *get_entry_for(const char *path);
+
+    socket_entry *get_entry_for(Vfs::Vfs_handle &handle);
+
     void close(Ptcp::Fd_proxy::Pfd &fd);
 };
 

@@ -23,40 +23,79 @@ namespace Ptcp {
     struct Vfs_wrapper;
 }
 
+using namespace Vfs;
+
 struct Supervision_delegate {
     Genode::Allocator &_alloc;
+    Vfs::File_io_service &_fs;
 
-    Supervision_delegate(Genode::Allocator &alloc) : _alloc(alloc) {}
+    Supervision_delegate(Genode::Allocator &alloc, Vfs::File_io_service &fs) : _alloc(alloc), _fs(fs) {}
 
-    void on_open(const char *path) {
+    void on_open(const char *path, Vfs_handle &handle) {
         Genode::Path<Vfs::MAX_PATH_LEN> gpath(path);
 
-        socket_entry *sock = new(_alloc) socket_entry();
-        if (gpath == "/tcp/new_socket") {
-            supervisor_helper->set_pending_entry(*sock);
+        { // Process opening of new sockets
+            if (gpath == "/tcp/new_socket" ||
+                (0 == Genode::strcmp(gpath.last_element(), "accept_socket"))) {
+                // Create new socket entry
+                socket_entry *sock = new(_alloc) socket_entry(handle);
+                // Read socket path
+                _fs.complete_read(&handle, sock->socketPath.base() + 1, Vfs::MAX_PATH_LEN, sock->pathLen);
+                supervisor_helper->set_pending_entry(*sock);
+                return;
+            }
         }
-        if (0 == Genode::strcmp(gpath.last_element(), "accept_socket")) {
-            supervisor_helper->set_pending_entry(*sock);
+
+        { // Add child handles to socket metadata
+            socket_entry *entry = supervisor_helper->get_entry_for(path);
+            if (entry == nullptr) {
+                debug_log(VFS_LOG_DEBUG, "handle with ", path, " has no parent fd");
+                return;
+            }
+
+            if (0 == Genode::strcmp(gpath.last_element(), "bind")) {
+                entry->_bind_handle = &handle;
+                debug_log(VFS_LOG_DEBUG, "bind handle ", path, " assigned");
+            }
+        }
+    }
+
+    void on_write(Vfs_handle *vfs_handle, const char *buf, file_size buf_size) {
+        socket_entry *entry = supervisor_helper->get_entry_for(*vfs_handle);
+        if (entry == nullptr) return;
+        if (vfs_handle == entry->_bind_handle) {
+            Genode::copy_cstring((char *) &entry->boundAddress, buf, buf_size+1);
         }
     }
 };
 
-class Ptcp::Vfs_wrapper : public Vfs::Proxy_fs {
+class Ptcp::Vfs_wrapper : public Proxy_fs {
     Supervision_delegate delegate;
 public:
-    Vfs_wrapper(Vfs::Env &env, File_system &lwip_fs) : Vfs::Proxy_fs(lwip_fs, Ptcp::mutex), delegate(env.alloc()) {}
+    Vfs_wrapper(Env &env, File_system &lwip_fs) : Proxy_fs(lwip_fs, Ptcp::mutex), delegate(env.alloc(), *this) {}
 
-    Open_result open(const char *path, unsigned int mode, Vfs::Vfs_handle **handle, Genode::Allocator &alloc) override {
+    Open_result open(const char *path, unsigned int mode, Vfs_handle **handle, Genode::Allocator &alloc) override {
         auto result = Proxy_fs::open(path, mode, handle, alloc);
-        delegate.on_open(path);
+        delegate.on_open(path, **handle);
+
         debug_log(VFS_LOG_DEBUG, "Opened ", path, "; handle address ", *handle);
         return result;
     }
 
-    void close(Vfs::Vfs_handle *handle) override {
+    void close(Vfs_handle *handle) override {
         debug_log(VFS_LOG_DEBUG, "ptcp Closed ", handle);
 
         Proxy_fs::close(handle);
+    }
+
+    Write_result write(Vfs_handle *vfs_handle, const char *buf, file_size buf_size, file_size &out_count) override {
+        debug_log(VFS_LOG_DEBUG, "write to ", vfs_handle);
+        auto result = Proxy_fs::write(vfs_handle, buf, buf_size, out_count);
+
+        if (result == WRITE_OK)
+            delegate.on_write(vfs_handle, buf, buf_size);
+
+        return result;
     }
 
     const char *type() override {

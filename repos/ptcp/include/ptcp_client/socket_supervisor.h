@@ -58,6 +58,10 @@ public:
     void abandon(Ptcp::Fd_proxy::Pfd &fd);
 
     void dump(std::ostream &out);
+
+    socket_entry *get_entry_for(const char *path);
+
+    socket_entry *get_entry_for(Vfs::Vfs_handle &handle);
 };
 
 extern Socket_supervisor *socket_supervisor;

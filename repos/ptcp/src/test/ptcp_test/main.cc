@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <arpa/inet.h>
 
@@ -54,6 +55,7 @@ void restore_sockets_state() {
     for (int i = 0; i < len; ++i) {
         Genode::warning("load ", i);
         entries[i] = serialized_socket::load(snapshot);
+        entries[i].save(std::cout); // Load logging
     }
 
     // Reopen
@@ -64,7 +66,31 @@ void restore_sockets_state() {
     }
 
     // Restore state
-    // TODO
+    for (int i = 0; i < len; ++i) {
+        auto pfd = entries[i].pfd;
+        int libc_fd = fd_proxy->map_fd(Fd_proxy::Pfd{pfd});
+        if (char *addr = entries[i].boundAddress) {
+            struct sockaddr_in in_addr;
+            in_addr.sin_family = AF_INET;
+
+            strtok(addr, ":");
+            char *port = strtok(nullptr, ":");
+
+            inet_aton((const char *) addr, &in_addr.sin_addr);
+            in_addr.sin_port = htons(atoi((const char *) port));
+            Genode::warning("port, ", (const char *) port);
+
+            if (0 != bind(libc_fd, (struct sockaddr *) &in_addr, sizeof(in_addr))) {
+                error("while calling bind(), errno=", errno);
+                return;
+            }
+            log("Socket bound IN RESTORE");
+            if (0 != listen(libc_fd, 1)) {
+                error("while calling listen(), errno=", errno);
+            }
+            log("Socket listens IN RESTORE");
+        }
+    }
 
     snapshot.close();
 }

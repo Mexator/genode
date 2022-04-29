@@ -21,4 +21,16 @@ void Supervisor_helper::close(Ptcp::Fd_proxy::Pfd &fd) {
     _socket_supervisor.abandon(fd);
 }
 
+socket_entry *Supervisor_helper::get_entry_for(const char *path) {
+    if (0 == Genode::strcmp(path, _md->socketPath.string(), _md->pathLen)) {
+        return _md;
+    }
+    return _socket_supervisor.get_entry_for(path);
+}
+
+socket_entry *Supervisor_helper::get_entry_for(Vfs::Vfs_handle &handle) {
+    if (_md && _md->belongs_to_this(handle)) return _md;
+    return _socket_supervisor.get_entry_for(handle);
+}
+
 Supervisor_helper *supervisor_helper;

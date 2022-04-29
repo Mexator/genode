@@ -1,6 +1,9 @@
 #ifndef _PTCP_SERIALIZED_SOCKET_STATE_H_
 #define _PTCP_SERIALIZED_SOCKET_STATE_H_
 
+// Genode includes
+#include <base/output.h>
+
 // Libc includes
 #include <iostream>
 
@@ -9,10 +12,13 @@
  */
 struct serialized_socket {
     unsigned long pfd;
+    char *boundAddress;
 
     void save(std::ostream &out);
 
     static serialized_socket load(std::istream &in);
+
+    void print(Genode::Output &out) const;
 };
 
 
