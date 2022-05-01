@@ -56,7 +56,7 @@ void Socket_supervisor::dump(std::ostream &out) {
     out << count << "\n";
     _sockets.for_each([&](const Socket_md_node &node) {
         auto entry = node._entry;
-        serialized_socket sock{entry.ptcpId.id, entry.boundAddress};
+        serialized_socket sock{entry.ptcpId.id, entry.tcpState, entry.boundAddress};
         sock.save(out);
     });
 

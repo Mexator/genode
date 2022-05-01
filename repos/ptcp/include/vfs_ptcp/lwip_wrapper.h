@@ -49,13 +49,18 @@ struct Supervision_delegate {
         { // Add child handles to socket metadata
             socket_entry *entry = supervisor_helper->get_entry_for(path);
             if (entry == nullptr) {
-                debug_log(VFS_LOG_DEBUG, "handle with ", path, " has no parent fd");
+                debug_log(VFS_LOG_DEBUG, "handle with ", path, " has no parent dir");
                 return;
             }
 
             if (0 == Genode::strcmp(gpath.last_element(), "bind")) {
                 entry->_bind_handle = &handle;
                 debug_log(VFS_LOG_DEBUG, "bind handle ", path, " assigned");
+            }
+
+            if (0 == Genode::strcmp(gpath.last_element(), "listen")) {
+                entry->_listen_handle = &handle;
+                debug_log(VFS_LOG_DEBUG, "listen handle ", path, " assigned");
             }
         }
     }
@@ -64,8 +69,15 @@ struct Supervision_delegate {
         socket_entry *entry = supervisor_helper->get_entry_for(*vfs_handle);
         if (entry == nullptr) return;
         if (vfs_handle == entry->_bind_handle) {
-            Genode::copy_cstring((char *) &entry->boundAddress, buf, buf_size+1);
+            Genode::copy_cstring((char *) &entry->boundAddress, buf, buf_size + 1);
+            return;
         }
+        if (vfs_handle == entry->_listen_handle) {
+            debug_log(VFS_LOG_DEBUG, "listen handle write logged");
+            entry->tcpState = LISTEN;
+            return;
+        }
+        debug_log(VFS_LOG_DEBUG, "unmatched handle ", vfs_handle);
     }
 };
 

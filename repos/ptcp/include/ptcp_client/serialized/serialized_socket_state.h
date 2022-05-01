@@ -7,11 +7,15 @@
 // Libc includes
 #include <iostream>
 
+// PTCP includes
+#include <ptcp_client/socket_state.h>
+
 /**
  * Socket structure as it is persisted on disk
  */
 struct serialized_socket {
     unsigned long pfd;
+    tcp_state state;
     char *boundAddress;
 
     void save(std::ostream &out);

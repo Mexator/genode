@@ -85,6 +85,8 @@ void restore_sockets_state() {
                 return;
             }
             log("Socket bound IN RESTORE");
+        }
+        if (entries[i].state == LISTEN) {
             if (0 != listen(libc_fd, 1)) {
                 error("while calling listen(), errno=", errno);
             }

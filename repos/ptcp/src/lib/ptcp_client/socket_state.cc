@@ -4,8 +4,9 @@
 using namespace Vfs;
 
 socket_entry::socket_entry(Vfs_handle &handle)
-        : _handle{handle}, _bind_handle{nullptr},
-          ptcpId{false, 0}, pathLen{0}, boundAddress{} {}
+        : _handle{handle}, _bind_handle{nullptr}, _listen_handle{nullptr},
+          ptcpId{false, 0}, pathLen{0},
+          boundAddress{}, tcpState{CLOSED} {}
 
 void socket_entry::print(Genode::Output &out) const {
     if (ptcpId.known)
@@ -17,5 +18,6 @@ void socket_entry::print(Genode::Output &out) const {
 bool socket_entry::belongs_to_this(Vfs::Vfs_handle &handle) {
     if (&_handle == &handle) return true;
     if (_bind_handle == &handle) return true;
+    if (_listen_handle == &handle) return true;
     return false;
 }
