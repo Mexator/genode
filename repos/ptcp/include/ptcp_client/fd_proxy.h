@@ -107,6 +107,6 @@ public:
     }
 };
 
-static Genode::Constructible<Ptcp::Fd_proxy> fd_proxy;
+extern Ptcp::Fd_proxy *fd_proxy;
 
 #endif //_PTCP_FD_PROXY_H_

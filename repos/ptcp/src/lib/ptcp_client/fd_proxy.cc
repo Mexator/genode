@@ -39,3 +39,5 @@ void Fd_proxy::close(Pfd &sockfd) {
     supervisor_helper->close(sockfd);
     ::close(libc_fd);
 }
+
+Ptcp::Fd_proxy *fd_proxy;
