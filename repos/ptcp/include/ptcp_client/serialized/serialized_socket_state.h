@@ -16,11 +16,12 @@
 struct serialized_socket {
     unsigned long pfd;
     tcp_state state;
+    bool bound;
     char *boundAddress;
 
     void save(std::ostream &out);
 
-    static serialized_socket load(std::istream &in);
+    static serialized_socket& load(std::istream &in);
 
     void print(Genode::Output &out) const;
 };

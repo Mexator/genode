@@ -26,7 +26,7 @@ void init(Genode::Env &env, Genode::Allocator &alloc) {
 }
 
 void restore_sockets_state() {
-    std::fstream snapshot;
+    std::ifstream snapshot;
     snapshot.open("/snapshot/sockets");
     if (!snapshot.is_open()) {
         snapshot.close();
@@ -37,14 +37,12 @@ void restore_sockets_state() {
     // Read
     int len = 0;
     snapshot >> len;
-    Genode::warning("len ", len);
     if (len == 0) {
         snapshot.close();
         return;
     }
     serialized_socket entries[len];
     for (int i = 0; i < len; ++i) {
-        Genode::warning("load ", i);
         entries[i] = serialized_socket::load(snapshot);
         entries[i].save(std::cout); // Load logging
     }
@@ -60,7 +58,9 @@ void restore_sockets_state() {
     for (int i = 0; i < len; ++i) {
         auto pfd = entries[i].pfd;
         int libc_fd = fd_proxy->map_fd(Fd_proxy::Pfd{pfd});
-        if (char *addr = entries[i].boundAddress) {
+        if (entries[i].bound) {
+            Genode::warning("restoring bound socket ", pfd);
+            char *addr = entries[i].boundAddress;
             struct sockaddr_in in_addr;
             in_addr.sin_family = AF_INET;
 
@@ -80,8 +80,9 @@ void restore_sockets_state() {
         if (entries[i].state == LISTEN) {
             if (0 != listen(libc_fd, 1)) {
                 error("while calling listen(), errno=", errno);
+            } else {
+                log("Socket listens IN RESTORE");
             }
-            log("Socket listens IN RESTORE");
         }
     }
 

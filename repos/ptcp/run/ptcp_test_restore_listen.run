@@ -1,0 +1,187 @@
+set build_components {
+    test/testcase/restore_listen
+    lib/vfs/lwip
+    lib/vfs_ptcp
+    app/nic_trickster
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+
+build $build_components
+
+create_boot_directory
+
+import_from_depot [depot_user]/src/[base_src] \
+                  [depot_user]/pkg/[drivers_nic_pkg] \
+                  [depot_user]/src/init \
+                  [depot_user]/src/nic_router \
+                  [depot_user]/src/platform_drv \
+                  [depot_user]/src/report_rom \
+                  [depot_user]/src/acpi_drv \
+                  [depot_user]/src/ahci_drv \
+                  [depot_user]/src/rump \
+                  [depot_user]/src/vfs
+
+append config {
+<config verbose="yes" prio_levels="2">
+    <parent-provides>
+        <service name="ROM"/>
+        <service name="IRQ"/>
+        <service name="IO_MEM"/>
+        <service name="IO_PORT"/>
+        <service name="PD"/>
+        <service name="RM"/>
+        <service name="CPU"/>
+        <service name="LOG"/>
+    </parent-provides>
+
+    <default-route>
+        <any-service> <parent/> <any-child/> </any-service>
+    </default-route>
+
+    <default caps="100"/>
+
+    <start name="timer">
+        <resource name="RAM" quantum="2M"/>
+        <provides> <service name="Timer"/> </provides>
+    </start>
+
+    <start name="drivers" caps="1000" managing_system="yes" priority="-1">
+        <resource name="RAM" quantum="320M"/>
+        <binary name="init"/>
+        <route>
+            <service name="ROM" label="config"> <parent label="drivers.config"/> </service>
+            <service name="Timer"> <child name="timer"/> </service>
+            <service name="Uplink"> <child name="nic_router"/> </service>
+            <any-service> <parent/> </any-service>
+        </route>
+    </start>
+
+    <start name="nic_router" caps="200">
+        <resource name="RAM" quantum="100M"/>
+        <provides>
+            <service name="Nic"/>
+            <service name="Uplink"/>
+        </provides>
+        <config dhcp_discover_timeout_sec="1">
+
+        <policy label_prefix="restore_listen" domain="downlink"/>
+        <policy label_prefix="nic_trickster" domain="downlink"/>
+        <policy label_prefix="drivers"           domain="uplink"/>
+
+        <domain name="uplink" interface="172.20.0.25/16">
+
+            <nat domain="downlink"
+                 tcp-ports="16384"
+                 udp-ports="16384"
+                 icmp-ids="16384"/>
+
+            <tcp-forward port="4000"  domain="downlink" to="10.0.3.2"/>
+            <tcp-forward port="4001"  domain="downlink" to="10.0.3.2"/>
+            <tcp-forward port="4002"  domain="downlink" to="10.0.3.2"/>
+            <tcp-forward port="4003"  domain="downlink" to="10.0.3.2"/>
+            <tcp-forward port="4004"  domain="downlink" to="10.0.3.2"/>
+            <tcp-forward port="4005"  domain="downlink" to="10.0.3.2"/>
+
+        </domain>
+
+        <domain name="downlink" interface="10.0.3.1/24">
+
+            <dhcp-server ip_first="10.0.3.2"
+                         ip_last="10.0.3.2"
+                         dns_config_from="uplink"/>
+
+            <tcp dst="0.0.0.0/0"><permit-any domain="uplink" /></tcp>
+            <udp dst="0.0.0.0/0"><permit-any domain="uplink" /></udp>
+            <icmp dst="0.0.0.0/0" domain="uplink"/>
+
+        </domain>
+        </config>
+    </start>
+}
+
+append_platform_drv_config
+
+append config {
+    <start name="nic_trickster" caps="200">
+    		<resource name="RAM" quantum="10M"/>
+    		<provides>
+    		    <service name="Nic"/>
+    		    <service name="Nic_control"/>
+    		</provides>
+    		<config uplink="uplink"
+    		        downlink="app"
+    		        time="no"
+    		        default="name"
+    		        eth="no"
+    		        arp="no"
+    		        ipv4="default"
+    		        dhcp="no"
+    		        udp="no"
+    		        icmp="no"
+    		        tcp="all" />
+    		<route>
+    			<service name="Nic"> <child name="nic_router"/> </service>
+    			<any-service> <parent/> <any-child/> </any-service>
+    		</route>
+    </start>
+
+    <start name="report_rom">
+        <resource name="RAM" quantum="1M"/>
+        <provides> <service name="Report"/> <service name="ROM"/> </provides>
+    </start>
+    <start name="ahci_drv">
+        <resource name="RAM" quantum="10M" />
+        <provides> <service name="Block" /> </provides>
+        <config>
+            <report ports="yes"/>
+            <policy label_prefix="restore_listen" root="/snapshot" device="0" writeable="yes"/>
+        </config>
+        <route>
+            <service name="Report"> <child name="report_rom"/> </service>
+            <any-service> <parent/> <any-child /> </any-service>
+        </route>
+    </start>
+
+    <start name="restore_listen" caps="1200" priority="-1">
+        <resource name="RAM" quantum="100M"/>
+        <route>
+            <service name="Nic"> <child name="nic_trickster"/> </service>
+            <service name="Block"> <child name="ahci_drv"/> </service>
+            <any-service> <parent/> <any-child/> </any-service>
+        </route>
+        <config  verbose="yes" ld_verbose="yes" >
+            <vfs>
+                <dir name="snapshot">   <rump fs="ext2fs" ram="15M"/>         </dir>
+                <dir name="dev">        <log/>         </dir>
+                <dir name="socket"> <ptcp dhcp="yes"/> </dir>
+            </vfs>
+            <libc stdout="/dev/log" stderr="/dev/log" socket="/socket"/>
+        </config>
+    </start>
+</config>
+}
+
+install_config $config
+build_boot_image {
+    libc.lib.so libm.lib.so stdcxx.lib.so
+    vfs_lwip.lib.so
+    vfs_ptcp.lib.so ptcp_client.lib.so restore_listen nic_trickster
+}
+
+# qemu config
+set qemu_args ""
+append qemu_args " -no-kvm "
+append qemu_args " -display none "
+
+# connect comport 0 to stdio
+append qemu_args " -serial stdio "
+
+set macaddr "52:54:22:db:5a:70"
+append qemu_args " -netdev tap,id=net1,script=no,downscript=no,ifname=tap0 "
+append qemu_args " -net nic,model=e1000,netdev=net1,macaddr=$macaddr "
+
+set disk_img "/genode/stuff/ext2.raw"
+append qemu_args " -drive id=disk,file=$disk_img,format=raw,if=none "
+append qemu_args " -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 "
+run_genode_until forever
