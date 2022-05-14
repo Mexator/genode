@@ -17,7 +17,7 @@ void Socket_supervisor::supervise(socket_entry &entry) {
     debug_log(SOCKET_SUPERVISOR_DEBUG, "Socket_supervisor now watches ", entry);
 }
 
-void Socket_supervisor::abandon(Ptcp::Fd_proxy::Pfd &fd) {
+void Socket_supervisor::abandon(Ptcp::Pfd &fd) {
     Socket_md_node *result;
 
     _sockets.for_each([&](const Socket_md_node &node) {

@@ -57,7 +57,7 @@ void restore_sockets_state() {
     // Restore state
     for (int i = 0; i < len; ++i) {
         auto pfd = entries[i].pfd;
-        int libc_fd = fd_proxy->map_fd(Fd_proxy::Pfd{pfd});
+        int libc_fd = fd_proxy->map_fd(Pfd{pfd});
         if (entries[i].bound) {
             Genode::warning("restoring bound socket ", pfd);
             char *addr = entries[i].boundAddress;

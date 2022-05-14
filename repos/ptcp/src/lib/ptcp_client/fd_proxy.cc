@@ -15,7 +15,7 @@ void Fd_proxy::set(int libc_fd, int proxy_fd) {
     supervisor_helper->submit_entry(fd);
 }
 
-Fd_proxy::Pfd Fd_proxy::supervised_socket(int domain, int type, int protocol) {
+Pfd Fd_proxy::supervised_socket(int domain, int type, int protocol) {
     Genode::Mutex::Guard _(socket_creation_mutex);
     debug_log(FD_PROXY_DEBUG, __func__);
     int libc_fd = socket(domain, type, protocol);
@@ -24,7 +24,7 @@ Fd_proxy::Pfd Fd_proxy::supervised_socket(int domain, int type, int protocol) {
     return pfd;
 }
 
-Fd_proxy::Pfd Fd_proxy::accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen) {
+Pfd Fd_proxy::accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen) {
     Genode::Mutex::Guard _(socket_creation_mutex);
     debug_log(FD_PROXY_DEBUG, __func__);
     int libc_fd = ::accept(map_fd(sockfd), addr, addrlen);

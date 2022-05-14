@@ -19,37 +19,36 @@
 
 namespace Ptcp {
     class Fd_proxy;
+
+    struct Fd_handle;
+    typedef Genode::Id_space<Fd_handle> Fd_space;
+    typedef Fd_space::Element Fd_element;
+    // Persistent file descriptor. Is valid even after restart
+    typedef Fd_space::Id Pfd;
 }
+
+
+// Wrapper to allow deleting of objects (see repos/libports/include/libc-plugin/fd_alloc.h)
+// I have a little idea how it works. But it does.
+struct Ptcp::Fd_handle {
+    Fd_element elem;
+    int _libc_fd;
+
+    explicit Fd_handle(int libc_fd, Fd_space &space) : elem(*this, space), _libc_fd(libc_fd) {}
+
+    explicit Fd_handle(int libc_fd, int proxy_fd, Fd_space &space) :
+            elem(
+                    *this,
+                    space,
+                    Fd_space::Id{(unsigned long) proxy_fd}),
+            _libc_fd(libc_fd) {}
+};
 
 /**
  * Class that lets its users use persistent file descriptors
  */
 class Ptcp::Fd_proxy {
 private:
-
-    struct Fd_handle;
-    typedef Genode::Id_space<Fd_handle> Fd_space;
-    typedef Fd_space::Element Fd_element;
-public:
-    // Persistent file descriptor. Is valid even after restart
-    typedef Fd_space::Id Pfd;
-private:
-    // Wrapper to allow deleting of objects (see repos/libports/include/libc-plugin/fd_alloc.h)
-    // I have a little idea how it works. But it does.
-    struct Fd_handle {
-        Fd_element elem;
-        int _libc_fd;
-
-        explicit Fd_handle(int libc_fd, Fd_space &space) : elem(*this, space), _libc_fd(libc_fd) {}
-
-        explicit Fd_handle(int libc_fd, int proxy_fd, Fd_space &space) :
-                elem(
-                        *this,
-                        space,
-                        Fd_space::Id{(unsigned long) proxy_fd}),
-                _libc_fd(libc_fd) {}
-    };
-
     Fd_space fd_space;
     Genode::Allocator &_alloc;
     Genode::Mutex socket_creation_mutex;

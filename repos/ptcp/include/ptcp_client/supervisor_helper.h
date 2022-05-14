@@ -22,13 +22,13 @@ public:
 
     void set_pending_entry(socket_entry &metadata);
 
-    void submit_entry(Ptcp::Fd_proxy::Pfd &fd);
+    void submit_entry(Ptcp::Pfd &fd);
 
     socket_entry *get_entry_for(const char *path);
 
     socket_entry *get_entry_for(Vfs::Vfs_handle &handle);
 
-    void close(Ptcp::Fd_proxy::Pfd &fd);
+    void close(Ptcp::Pfd &fd);
 };
 
 extern Supervisor_helper *supervisor_helper;

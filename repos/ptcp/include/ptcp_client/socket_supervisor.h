@@ -55,7 +55,7 @@ public:
 
     void supervise(socket_entry &entry);
 
-    void abandon(Ptcp::Fd_proxy::Pfd &fd);
+    void abandon(Ptcp::Pfd &fd);
 
     void dump(std::ostream &out);
 

@@ -17,13 +17,13 @@
 using Genode::log;
 using Genode::warning;
 using Genode::error;
-using Ptcp::Fd_proxy;
+using Ptcp::Pfd;
 
-std::vector<Fd_proxy::Pfd> create_sockets(int count) {
-    std::vector<Fd_proxy::Pfd> vector;
+std::vector<Pfd> create_sockets(int count) {
+    std::vector<Pfd> vector;
 
     for (int i = 0; i < count; ++i) {
-        Fd_proxy::Pfd pfd = fd_proxy->supervised_socket(AF_INET, SOCK_STREAM, 0);
+        Pfd pfd = fd_proxy->supervised_socket(AF_INET, SOCK_STREAM, 0);
         vector.push_back(pfd);
     }
     return vector;
@@ -31,14 +31,14 @@ std::vector<Fd_proxy::Pfd> create_sockets(int count) {
 
 struct testcase_sockets {
     // ports 4000 4001
-    Fd_proxy::Pfd bound1, bound2;
+    Pfd bound1, bound2;
     // ports 4002 4003
-    Fd_proxy::Pfd listen1, listen2;
+    Pfd listen1, listen2;
     // ports 4004 4005
-    Fd_proxy::Pfd closed1, closed2;
-    std::vector<Fd_proxy::Pfd> all;
+    Pfd closed1, closed2;
+    std::vector<Pfd> all;
 
-    static testcase_sockets from_vector(std::vector<Fd_proxy::Pfd> fds) {
+    static testcase_sockets from_vector(std::vector<Pfd> fds) {
         return testcase_sockets{
                 fds[0], fds[1],
                 fds[2], fds[3],
@@ -52,7 +52,7 @@ struct testcase_sockets {
     int count() { return all.size(); }
 };
 
-testcase_sockets initialize(std::vector<Fd_proxy::Pfd> vector) {
+testcase_sockets initialize(std::vector<Pfd> vector) {
     testcase_sockets sockets = testcase_sockets::from_vector(vector);
     for (int i = 0; i < 4; ++i) {
         struct sockaddr_in in_addr;
@@ -90,19 +90,19 @@ void verify(testcase_sockets sockets) {
     if (res != 0) error("while binding closed sockets");
 
     res = listen(fd_proxy->map_fd(sockets.closed1), 1);
-    res = listen(fd_proxy->map_fd(sockets.closed2), 1);
-    res = listen(fd_proxy->map_fd(sockets.bound1), 1);
-    res = listen(fd_proxy->map_fd(sockets.bound2), 1);
+    res += listen(fd_proxy->map_fd(sockets.closed2), 1);
+    res += listen(fd_proxy->map_fd(sockets.bound1), 1);
+    res += listen(fd_proxy->map_fd(sockets.bound2), 1);
     if (res != 0) error("while calling listen");
 
     for (int i = 0; i < sockets.count(); ++i) {
-        Fd_proxy::Pfd socket = sockets.all[i];
+        Pfd socket = sockets.all[i];
 
         struct sockaddr_in incoming_addr;
         char addr_str[INET6_ADDRSTRLEN];
         socklen_t sock_len = sizeof(sockaddr_in);
 
-        Genode::log("Waiting for accept for socket at port", testcase_sockets::base_port + i);
+        Genode::log("Waiting for accept for socket at port ", testcase_sockets::base_port + i);
         fd_proxy->accept(socket, (sockaddr *) &incoming_addr, &sock_len);
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr_str, sizeof(in_addr)));
     }
@@ -124,7 +124,7 @@ void _main(Libc::Env *env) {
         snapshot.close();
     } else {
         Genode::warning("Snapshot file exists -- verification;");
-        std::vector<Fd_proxy::Pfd> vector = std::vector<Fd_proxy::Pfd>(6);
+        std::vector<Pfd> vector = std::vector<Pfd>(6);
         for (int i = 0; i < 6; ++i) {
             snapshot >> vector[i].value;
         }
