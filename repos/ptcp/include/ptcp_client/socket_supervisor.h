@@ -2,7 +2,6 @@
 #define _PTCP_SOCKET_SUPERVISOR_H_
 
 // Genode includes
-#include <util/reconstructible.h>
 #include <util/avl_tree.h>
 
 // Ptcp includes
@@ -11,9 +10,6 @@
 
 // Nic control includes
 #include <nic_trickster/control/session.h>
-
-// Debug includes
-#include <logging/mylog.h>
 
 // Libcxx includes
 #include <iostream>

@@ -6,6 +6,10 @@
 #include <ptcp_client/fd_proxy.h>
 #include <ptcp_client/socket_supervisor.h>
 
+#ifndef MULTI_THREAD_SUBMIT_DEBUG
+#define MULTI_THREAD_SUBMIT_DEBUG false
+#endif
+
 /**
  * [socket_entry] instances are created without id assigned.
  * This class ensures that every socket supervised by [Socket_supervisor] is
@@ -16,6 +20,8 @@ class Supervisor_helper {
 
     socket_entry *_md;
     Socket_supervisor &_socket_supervisor;
+    Genode::Semaphore _can_pend;
+    Genode::Semaphore _can_submit;
 
 public:
     Supervisor_helper(Socket_supervisor &supervisor);

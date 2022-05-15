@@ -2,9 +2,11 @@
 #include <ptcp_client/fd_proxy.h>
 #include <ptcp_client/supervisor_helper.h>
 
-// Socket api
-#include <sys/socket.h>
+// Libc includes
 #include <unistd.h>
+
+// Debug includes
+#include <logging/mylog.h>
 
 using namespace Ptcp;
 
@@ -15,22 +17,13 @@ void Fd_proxy::set(int libc_fd, int proxy_fd) {
     supervisor_helper->submit_entry(fd);
 }
 
-Pfd Fd_proxy::supervised_socket(int domain, int type, int protocol) {
+Pfd Fd_proxy::register_fd(int libc_fd) {
     Genode::Mutex::Guard _(socket_creation_mutex);
-    debug_log(FD_PROXY_DEBUG, __func__);
-    int libc_fd = socket(domain, type, protocol);
-    Pfd pfd = register_fd(libc_fd);
-    supervisor_helper->submit_entry(pfd);
-    return pfd;
-}
-
-Pfd Fd_proxy::accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen) {
-    Genode::Mutex::Guard _(socket_creation_mutex);
-    debug_log(FD_PROXY_DEBUG, __func__);
-    int libc_fd = ::accept(map_fd(sockfd), addr, addrlen);
-    Pfd pfd = register_fd(libc_fd);
-    supervisor_helper->submit_entry(pfd);
-    return pfd;
+    Fd_handle *element = new(_alloc) Fd_handle(libc_fd, fd_space);
+    debug_log(FD_PROXY_DEBUG, "created proxy_fd=", element->elem.id(), " to libc_fd=", libc_fd);
+    Pfd fd = element->elem.id();
+    supervisor_helper->submit_entry(fd);
+    return fd;
 }
 
 void Fd_proxy::close(Pfd &sockfd) {

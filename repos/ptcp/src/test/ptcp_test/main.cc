@@ -21,7 +21,11 @@ using namespace Ptcp;
 
 void _main() {
     warning("_main");
-    Pfd sock = fd_proxy->supervised_socket(AF_INET, SOCK_STREAM, 0);
+    Pfd sock;
+    {
+        int libc_socket = socket(AF_INET, SOCK_STREAM, 0);
+        sock = fd_proxy->register_fd(libc_socket);
+    }
     if (fd_proxy->map_fd(sock) == -1) {
         error("failed opening socket, errno=", errno);
         return;
@@ -50,7 +54,11 @@ void _main() {
         struct sockaddr_in incoming_addr;
         socklen_t sock_len = sizeof(sockaddr_in);
 
-        Pfd accept_fd = fd_proxy->accept(sock, (sockaddr *) &incoming_addr, &sock_len);
+        Pfd accept_fd;
+        {
+            int libc_accept_fd = accept(fd_proxy->map_fd(sock), (sockaddr *) &incoming_addr, &sock_len);
+            accept_fd = fd_proxy->register_fd(libc_accept_fd);
+        }
         int i = fd_proxy->map_fd(accept_fd);
 
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr, sizeof(in_addr)));
@@ -63,12 +71,21 @@ void _main() {
     }
 }
 
+void socket_creator() {
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    sleep(1);
+    fd_proxy->register_fd(s);
+}
+
 void Libc::Component::construct(Libc::Env &env) {
     log(__func__);
     with_libc([&]() {
         static Genode::Heap heap(env.ram(), env.rm());
         startup_callback(env, heap);
-        pthread_t t;
-        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
+        for (int i = 0; i < 10; ++i) {
+            pthread_t t;
+            pthread_create(&t, nullptr, (void *(*)(void *)) (socket_creator), nullptr);
+        }
+//        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
     });
 }

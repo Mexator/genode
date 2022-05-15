@@ -11,6 +11,7 @@ namespace Vfs {
     class Proxy_fs;
 
     class Proxy_handle;
+
     class Proxy_watch_handle;
 }
 

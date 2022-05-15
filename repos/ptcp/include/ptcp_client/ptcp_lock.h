@@ -4,6 +4,7 @@
 #include <base/mutex.h>
 
 namespace Ptcp {
+    // Mutex to stop VFS during snapshot
     extern Genode::Mutex mutex;
 }
 

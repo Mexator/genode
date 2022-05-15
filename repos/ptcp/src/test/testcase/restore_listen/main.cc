@@ -23,7 +23,8 @@ std::vector<Pfd> create_sockets(int count) {
     std::vector<Pfd> vector;
 
     for (int i = 0; i < count; ++i) {
-        Pfd pfd = fd_proxy->supervised_socket(AF_INET, SOCK_STREAM, 0);
+        int libc_socket = socket(AF_INET, SOCK_STREAM, 0);
+        Pfd pfd = fd_proxy->register_fd(libc_socket);
         vector.push_back(pfd);
     }
     return vector;
@@ -103,7 +104,7 @@ void verify(testcase_sockets sockets) {
         socklen_t sock_len = sizeof(sockaddr_in);
 
         Genode::log("Waiting for accept for socket at port ", testcase_sockets::base_port + i);
-        fd_proxy->accept(socket, (sockaddr *) &incoming_addr, &sock_len);
+        accept(fd_proxy->map_fd(socket), (sockaddr *) &incoming_addr, &sock_len);
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr_str, sizeof(in_addr)));
     }
 

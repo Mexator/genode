@@ -4,6 +4,9 @@
 #include <ptcp_client/supervisor_helper.h>
 #include <ptcp_client/serialized/serialized_socket_state.h>
 
+// Debug includes
+#include <logging/mylog.h>
+
 Socket_supervisor::Socket_supervisor(
         Genode::Allocator &alloc,
         Nic_control::Connection &conn

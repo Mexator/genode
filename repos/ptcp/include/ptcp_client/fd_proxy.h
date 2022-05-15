@@ -4,14 +4,6 @@
 // Genode includes
 #include <base/id_space.h>
 #include <base/allocator.h>
-#include <base/mutex.h>
-#include <util/reconstructible.h>
-
-// Socket api
-#include <sys/socket.h>
-
-// Debug includes
-#include <logging/mylog.h>
 
 #ifndef FD_PROXY_DEBUG
 #define FD_PROXY_DEBUG false
@@ -72,26 +64,19 @@ private:
         return result;
     }
 
-    /**
-     * Register [libc_fd] and returns handle to it
-     */
-    Fd_space::Id register_fd(int libc_fd) {
-        Fd_handle *element = new(_alloc) Fd_handle(libc_fd, fd_space);
-        debug_log(FD_PROXY_DEBUG, "created proxy_fd=", element->elem.id(), " to libc_fd=", libc_fd);
-        return element->elem.id();
-    }
-
 public:
 
     explicit Fd_proxy(Genode::Allocator &alloc) : _alloc(alloc), socket_creation_mutex() {}
 
     /**
      * Register [proxy_fd] as alias for [libc_fd].
-     * Used only for restoration
+     * XXX: Use only for restoration
      */
     void set(int libc_fd, int proxy_fd);
-    Pfd supervised_socket(int domain, int type, int protocol);
-    Pfd accept(Pfd &sockfd, struct sockaddr *addr, socklen_t *addrlen);
+    /**
+     * Register [libc_fd] and return persistent handle to it
+     */
+    Fd_space::Id register_fd(int libc_fd);
     void close(Pfd &sockfd);
 
     /**

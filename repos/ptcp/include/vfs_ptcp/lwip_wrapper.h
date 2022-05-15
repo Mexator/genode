@@ -26,10 +26,26 @@ namespace Ptcp {
 using namespace Vfs;
 
 struct Supervision_delegate {
+    Genode::Env &_env;
     Genode::Allocator &_alloc;
     Vfs::File_io_service &_fs;
 
-    Supervision_delegate(Genode::Allocator &alloc, Vfs::File_io_service &fs) : _alloc(alloc), _fs(fs) {}
+    Supervision_delegate(Genode::Env &env, Genode::Allocator &alloc, Vfs::File_io_service &fs) : _env(env),
+                                                                                                 _alloc(alloc),
+                                                                                                 _fs(fs) {}
+
+    class Submitter_thread : public Genode::Thread {
+    private:
+        socket_entry &_sock;
+    public:
+        Submitter_thread(Genode::Env &env, socket_entry &sock) :
+                Genode::Thread(env, "submitter", 0x400),
+                _sock(sock) {}
+
+        void entry() override {
+            supervisor_helper->set_pending_entry(_sock);
+        }
+    };
 
     void on_open(const char *path, Vfs_handle &handle) {
         Genode::Path<Vfs::MAX_PATH_LEN> gpath(path);
@@ -41,7 +57,8 @@ struct Supervision_delegate {
                 socket_entry *sock = new(_alloc) socket_entry(handle);
                 // Read socket path
                 _fs.complete_read(&handle, sock->socketPath.base() + 1, Vfs::MAX_PATH_LEN, sock->pathLen);
-                supervisor_helper->set_pending_entry(*sock);
+                // set_pending_entry may block. Execute in another thread to avoid deadlock
+                (new(_alloc) Submitter_thread(_env, *sock))->start();
                 return;
             }
         }
@@ -84,7 +101,8 @@ struct Supervision_delegate {
 class Ptcp::Vfs_wrapper : public Proxy_fs {
     Supervision_delegate delegate;
 public:
-    Vfs_wrapper(Env &env, File_system &lwip_fs) : Proxy_fs(lwip_fs, Ptcp::mutex), delegate(env.alloc(), *this) {}
+    Vfs_wrapper(Env &env, File_system &lwip_fs) : Proxy_fs(lwip_fs, Ptcp::mutex),
+                                                  delegate(env.env(), env.alloc(), *this) {}
 
     Open_result open(const char *path, unsigned int mode, Vfs_handle **handle, Genode::Allocator &alloc) override {
         auto result = Proxy_fs::open(path, mode, handle, alloc);
