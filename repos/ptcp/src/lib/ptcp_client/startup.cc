@@ -59,7 +59,7 @@ void restore_sockets_state() {
     for (int i = 0; i < len; ++i) {
         auto pfd = entries[i].pfd;
         int libc_fd = fd_proxy->map_fd(Pfd{pfd});
-        if (entries[i].bound) {
+        if (entries[i].state >= BOUND) {
             Genode::warning("restoring bound socket ", pfd);
             char *addr = entries[i].boundAddress;
             struct sockaddr_in in_addr;
@@ -79,7 +79,7 @@ void restore_sockets_state() {
             log("Socket bound IN RESTORE");
         }
         if (entries[i].state == LISTEN) {
-            if (0 != listen(libc_fd, 1)) {
+            if (0 != listen(libc_fd, 0)) {
                 error("while calling listen(), errno=", errno);
             } else {
                 log("Socket listens IN RESTORE");

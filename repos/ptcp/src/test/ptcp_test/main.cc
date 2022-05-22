@@ -42,7 +42,7 @@ void _main() {
     }
     log("Socket bound");
 
-    if (0 != listen(fd_proxy->map_fd(sock), 1)) {
+    if (0 != listen(fd_proxy->map_fd(sock), 0)) {
         error("while calling listen(), errno=", errno);
     }
     log("Socket listens");
@@ -82,10 +82,11 @@ void Libc::Component::construct(Libc::Env &env) {
     with_libc([&]() {
         static Genode::Heap heap(env.ram(), env.rm());
         startup_callback(env, heap);
-        for (int i = 0; i < 10; ++i) {
-            pthread_t t;
-            pthread_create(&t, nullptr, (void *(*)(void *)) (socket_creator), nullptr);
-        }
-//        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
+//        for (int i = 0; i < 10; ++i) {
+//            pthread_t t;
+//            pthread_create(&t, nullptr, (void *(*)(void *)) (socket_creator), nullptr);
+//        }
+        pthread_t t;
+        pthread_create(&t, nullptr, (void *(*)(void *)) (_main), nullptr);
     });
 }

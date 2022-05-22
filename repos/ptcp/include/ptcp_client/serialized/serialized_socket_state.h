@@ -15,9 +15,9 @@
  */
 struct serialized_socket {
     unsigned long pfd;
-    tcp_state state;
-    bool bound;
+    tcp_meta_state state;
     char *boundAddress;
+    char *remoteAddress;
 
     void save(std::ostream &out);
 

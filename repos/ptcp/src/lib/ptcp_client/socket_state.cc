@@ -3,8 +3,8 @@
 
 using namespace Vfs;
 
-socket_entry::socket_entry(Vfs_handle &handle)
-        : _handle{handle}, _bind_handle{nullptr}, _listen_handle{nullptr},
+socket_entry::socket_entry(Vfs_handle &handle, bool accepted)
+        : _handle{handle}, _accepted(accepted),
           ptcpId{false, 0}, pathLen{0},
           boundAddress{}, tcpState{CLOSED} {}
 
