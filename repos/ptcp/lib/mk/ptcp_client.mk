@@ -8,6 +8,7 @@ SRC_CC += startup.cc
 
 LIBS += libc
 LIBS += stdcxx
+LIBS += net
 
 PLUGIN_DIR = $(REP_DIR)/src/lib/ptcp_client
 vpath %.cc $(PLUGIN_DIR)

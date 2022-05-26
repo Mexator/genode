@@ -21,7 +21,7 @@
 #include <base/heap.h>
 
 /* local includes */
-#include "interface.h"
+#include <nic_trickster/interface.h>
 #include "uplink.h"
 
 namespace Net {

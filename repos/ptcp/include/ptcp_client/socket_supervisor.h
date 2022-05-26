@@ -41,11 +41,14 @@ class Socket_supervisor {
 
     Genode::Allocator &_md_alloc;
     Genode::Avl_tree<Socket_md_node> _sockets;
-    Nic_control::Connection &_conn;
+    Genode::Env &_env;
 
 public:
+    Nic_control::Connection &_conn;
+
     Socket_supervisor(
             Genode::Allocator &alloc,
+            Genode::Env &env,
             Nic_control::Connection &conn
     );
 

@@ -18,6 +18,10 @@ struct serialized_socket {
     tcp_meta_state state;
     char *boundAddress;
     char *remoteAddress;
+    int syn_packet_len;
+    char *syn_packet;
+    int ack_packet_len;
+    char *ack_packet;
 
     void save(std::ostream &out);
 

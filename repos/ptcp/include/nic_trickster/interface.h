@@ -46,6 +46,7 @@ protected:
 
     using Signal_handler = Genode::Signal_handler<Interface>;
 
+    bool is_uplink = false;
     Signal_handler _sink_ack;
     Signal_handler _sink_submit;
     Signal_handler _source_ack;
@@ -87,8 +88,10 @@ private:
     void _packet_avail() {}
 
 public:
+    void send(Ethernet_frame &eth, Genode::size_t const eth_size);
 
-    Interface(Genode::Env &env,
+    Interface(bool is_uplink,
+              Genode::Env &env,
               Genode::Allocator &allocator,
               Interface_label label,
               Timer::Connection &timer,

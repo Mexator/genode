@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <cstring>
+#include <string>
 #include <fstream>
 
 // Ptcp includes
@@ -23,10 +23,22 @@ void init(Genode::Env &env, Genode::Allocator &alloc) {
     Nic_control::Connection *conn = new(alloc) Nic_control::Connection(env);
     Genode::log("Nic_control Connected!");
 
-    socket_supervisor = new(alloc) Socket_supervisor(alloc, *conn);
+    socket_supervisor = new(alloc) Socket_supervisor(alloc, env, *conn);
 }
 
-void restore_sockets_state() {
+Pfd find_listening_parent(serialized_socket &entry, serialized_socket *items, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        auto item = items[i];
+        Genode::warning(entry, item);
+        if (item.state == LISTEN && Genode::strcmp(item.boundAddress, entry.boundAddress) == 0) {
+            return Pfd{item.pfd};
+        }
+    }
+    Genode::error("No listening parent found for ", entry);
+    throw Genode::Exception();
+}
+
+void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
     std::ifstream snapshot;
     snapshot.open("/snapshot/sockets");
     if (!snapshot.is_open()) {
@@ -50,35 +62,42 @@ void restore_sockets_state() {
 
     // Reopen
     for (int i = 0; i < len; ++i) {
-        Genode::warning("open ", i);
-        int libc_fd = socket(AF_INET, SOCK_STREAM, 0);
-        fd_proxy->set(libc_fd, entries[i].pfd);
+        Genode::warning(entries[i]);
+        if (entries[i].state != ESTABLISHED) {
+            // Established sockets will be recreated later with accept call
+            int libc_fd = socket(AF_INET, SOCK_STREAM, 0);
+            fd_proxy->set(libc_fd, entries[i].pfd);
+        }
     }
 
     // Restore state
     for (int i = 0; i < len; ++i) {
         auto pfd = entries[i].pfd;
         int libc_fd = fd_proxy->map_fd(Pfd{pfd});
-        if (entries[i].state >= BOUND) {
+        if (entries[i].state == BOUND || entries[i].state == LISTEN) {
             Genode::warning("restoring bound socket ", pfd);
-            char *addr = entries[i].boundAddress;
+
+            std::string str(entries[i].boundAddress);
+            std::string port_str = str.substr(str.find(":") + 1);
+
             struct sockaddr_in in_addr;
             in_addr.sin_family = AF_INET;
 
-            strtok(addr, ":");
-            char *port = strtok(nullptr, ":");
-
-            inet_aton((const char *) addr, &in_addr.sin_addr);
-            in_addr.sin_port = htons(atoi((const char *) port));
-            Genode::warning("port, ", (const char *) port);
+            inet_aton((const char *) str.c_str(), &in_addr.sin_addr);
+            in_addr.sin_port = htons(atoi(port_str.c_str()));
 
             if (0 != bind(libc_fd, (struct sockaddr *) &in_addr, sizeof(in_addr))) {
-                error("while calling bind(), errno=", errno);
+                error("while calling bind() IN RESTORE, errno=", errno);
                 return;
             }
             log("Socket bound IN RESTORE");
         }
         if (entries[i].state == LISTEN) {
+            /* I don't know how it works, but even without a backlog connections
+             * are still possible even if handshake was performed before an
+             * accept call.
+             *
+             * So, basically we can set backlog to 0. */
             if (0 != listen(libc_fd, 0)) {
                 error("while calling listen(), errno=", errno);
             } else {
@@ -86,7 +105,39 @@ void restore_sockets_state() {
             }
         }
     }
+    conn.set_restore_mode(true);
 
+    int SIZE = 4096 * 1024;
+    auto ds = env.ram().alloc(SIZE);
+    Genode::addr_t ds_attach_addr = env.rm().attach(ds);
+
+    for (int i = 0; i < len; ++i) {
+        if (entries[i].state == ESTABLISHED) {
+
+            Genode::memcpy((void *) ds_attach_addr, entries[i].syn_packet, entries[i].syn_packet_len);
+            Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) entries[i].syn_packet);
+            Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) ds_attach_addr);
+            conn.send_packet(entries[i].syn_packet_len, ds);
+
+            usleep(250000); // Yield execution to tcp stack so it send SYN/ACK packets
+
+            Genode::memcpy((void *) ds_attach_addr, entries[i].ack_packet, entries[i].ack_packet_len);
+            Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) entries[i].ack_packet);
+            Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) ds_attach_addr);
+            conn.send_packet(entries[i].ack_packet_len, ds);
+
+            usleep(250000); // Yield execution to tcp stack so it receive ACK#3 packets
+
+            Pfd parent = find_listening_parent(entries[i], entries, len);
+            Genode::warning("Trying to accept, parent=", parent);
+            int sock = accept(fd_proxy->map_fd(parent), nullptr, nullptr);
+            Genode::warning("Accepted! ", sock);
+            fd_proxy->set(sock, entries[i].pfd);
+            write(fd_proxy->map_fd(Pfd{entries[i].pfd}), "IS THIS WORKS!!!!???", 21);
+        }
+    }
+    conn.set_restore_mode(false);
+    env.rm().detach(ds_attach_addr);
     snapshot.close();
 }
 
@@ -104,7 +155,7 @@ void startup_callback(Genode::Env &env, Genode::Allocator &alloc) {
     // init controller classes
     init(env, alloc);
     // load state
-    restore_sockets_state();
+    restore_sockets_state(env, socket_supervisor->_conn);
     // Start dump loop
     pthread_t dumper;
     pthread_create(&dumper, nullptr, (void *(*)(void *)) (dump_loop), nullptr);

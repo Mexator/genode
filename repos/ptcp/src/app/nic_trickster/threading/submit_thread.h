@@ -1,3 +1,6 @@
+#ifndef SUBMIT_THREAD_H
+#define SUBMIT_THREAD_H
+
 #include <base/thread.h>
 #include <base/allocator.h>
 
@@ -7,7 +10,7 @@ struct Submitter : Genode::Thread {
     Net::Interface &_i;
 
     Submitter(Net::Interface &i, Genode::Env &env) :
-            Genode::Thread(env, "submitter", 0x40),
+            Genode::Thread(env, "submitter", 0x4000),
             _i(i) {}
 
     void entry() override;
@@ -23,3 +26,5 @@ struct Submitter_factory {
 
     void start_submitter_thread();
 };
+
+#endif

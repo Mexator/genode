@@ -28,7 +28,7 @@ constexpr int MAX_ADDR_LEN = NI_MAXHOST + NI_MAXSERV;
  */
 struct socket_entry {
     Vfs_handle &_handle; // socket dir handle
-    bool _accepted;
+    bool _accepted; // origin of socket - create with socket() or with accept()
 
     Vfs_handle *_bind_handle = nullptr;
     Vfs_handle *_listen_handle = nullptr;

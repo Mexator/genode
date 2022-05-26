@@ -20,6 +20,7 @@
 /* local includes */
 #include "component.h"
 #include <nic_trickster/control/stopper.h>
+#include <nic_trickster/control/tracker_delegate.h>
 
 using namespace Net;
 using namespace Genode;
@@ -45,8 +46,10 @@ Main::Main(Env &env)
         :
         _config(env, "config"), _timer(env), _heap(&env.ram(), &env.rm()),
         _root(env, _heap, _config.xml(), _timer, _curr_time),
-        _stopper(env.ep(), _heap) {
+        _stopper(env, env.ep(), _heap) {
     env.exec_static_constructors();
+    delegate = new(_heap) Tracker_delegate(_heap);
+
     env.parent().announce(env.ep().manage(_root));
     env.parent().announce(env.ep().manage(_stopper));
 }

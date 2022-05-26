@@ -12,10 +12,10 @@
  */
 
 /* local includes */
-#include "interface.h"
+#include <nic_trickster/interface.h>
 #include "packet_log.h"
-#include <base/heap.h>
 #include <nic_trickster/control/stopper.h>
+#include <nic_trickster/control/tracker_delegate.h>
 
 /* Genode includes */
 #include <net/ethernet.h>
@@ -46,6 +46,27 @@ void Net::Interface::_handle_eth(void *const eth_base,
             log("\033[33m(", remote._label, " <- ", _label, ")\033[0m ",
                 packet_log(eth, _log_cfg));
         }
+
+        if (!Nic_control_impl::is_restore) {
+            if (is_uplink) {
+                get_tracker().packet_to_host(eth);
+            } else {
+                get_tracker().packet_from_host(eth);
+            }
+        } else {
+            if (!is_uplink && eth.type() == Ethernet_frame::Type::IPV4) { // Filter out restoring SYN/ACKs from host
+                Size_guard size_guard(~0UL);
+                auto &ipv4 = eth.data < Ipv4_packet const>(size_guard);
+                if (ipv4.protocol() == Ipv4_packet::Protocol::TCP) {
+                    Size_guard g(~0UL);
+                    auto &tcp = ipv4.data<const Tcp_packet>(g);
+                    if (tcp.syn() && tcp.ack()) {
+                        return;
+                    }
+                }
+            }
+        }
+
         remote._send(eth, eth_size);
     }
     catch (Pointer<Interface>::Invalid) {
@@ -66,6 +87,9 @@ void Net::Interface::_send(Ethernet_frame &eth, Genode::size_t const size) {
     }
 }
 
+void Net::Interface::send(Ethernet_frame &eth, Genode::size_t const size) {
+    _handle_eth(&eth, size, Packet_descriptor());
+}
 
 void Net::Interface::_ready_to_submit() {
     Genode::Mutex::Guard _(sub_mut);
@@ -80,7 +104,8 @@ void Net::Interface::_ready_to_ack() {
 }
 
 
-Net::Interface::Interface(Env &env,
+Net::Interface::Interface(bool is_uplink,
+                          Env &env,
                           Allocator &allocator,
                           Interface_label label,
                           Timer::Connection &timer,
@@ -88,6 +113,7 @@ Net::Interface::Interface(Env &env,
                           bool log_time,
                           Xml_node config)
         :
+        is_uplink{is_uplink},
         _sink_ack{env.ep(), *this, &Interface::_ack_avail},
         _sink_submit{env.ep(), *this, &Interface::_ready_to_submit},
         _source_ack{env.ep(), *this, &Interface::_ready_to_ack},
@@ -105,5 +131,11 @@ Net::Interface::Interface(Env &env,
                  config.attribute_value("dhcp", _default_log_style),
                  config.attribute_value("udp", _default_log_style),
                  config.attribute_value("icmp", _default_log_style),
-                 config.attribute_value("tcp", _default_log_style)} {}
+                 config.attribute_value("tcp", _default_log_style)} {
+    if (is_uplink) {
+        to_local = this;
+    } else {
+        to_remote = this;
+    }
+}
 

@@ -1,9 +1,10 @@
-#include "../interface.h"
+#include "submit_thread.h"
+#include <nic_trickster/interface.h>
 #include <nic_trickster/control/stopper.h>
 
 void Submitter::entry() {
     while (_i._sink().packet_avail()) {
-        Genode::Mutex::Guard _(Stopper::mutex);
+        Genode::Mutex::Guard _(Nic_control_impl::mutex);
 
         ::Nic::Packet_descriptor const pkt = _i._sink().get_packet();
         if (!pkt.size() || !_i._sink().packet_valid(pkt)) {
