@@ -47,13 +47,12 @@ void Net::Interface::_handle_eth(void *const eth_base,
                 packet_log(eth, _log_cfg));
         }
 
-        if (!Nic_control_impl::is_restore) {
-            if (is_uplink) {
-                get_tracker().packet_to_host(eth);
-            } else {
-                get_tracker().packet_from_host(eth);
-            }
+        if (is_uplink) {
+            get_tracker().packet_to_host(eth);
         } else {
+            get_tracker().packet_from_host(eth);
+        }
+        if (Nic_control_impl::is_restore) {
             if (!is_uplink && eth.type() == Ethernet_frame::Type::IPV4) { // Filter out restoring SYN/ACKs from host
                 Size_guard size_guard(~0UL);
                 auto &ipv4 = eth.data < Ipv4_packet const>(size_guard);
