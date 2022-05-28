@@ -31,6 +31,7 @@ Submitter_factory::Submitter_factory(Net::Interface &i, Genode::Env &env, Genode
 void Submitter_factory::start_submitter_thread() {
     if (running != nullptr) {
         running->join();
+        running->~Submitter();
         _alloc.free(running, 0);
     }
     running = new(_alloc) Submitter(_i, _env);
