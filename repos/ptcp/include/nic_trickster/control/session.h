@@ -35,8 +35,13 @@ struct Nic_control::Session : Genode::Session {
      */
     virtual void set_restore_mode(bool enabled) = 0;
 
-    // Sends ethernet frame located in the provided dataspace to client of Nic session
-    virtual void send_packet(size_t len, Dataspace_capability cap) = 0;
+    // If the ethernet frame located in the provided dataspace is TCP segment,
+    // shift its SEQ to [expected_seq] and then sends the packet to to client of Nic session
+    virtual void send_offset_packet(size_t len, Dataspace_capability cap, uint32_t expected_seq) = 0;
+
+    // Calculates and sets SEQ offset for the last established socket. All packets from host to remote will
+    // have SEQ shifted to this offset
+    virtual void calculate_offsets(uint32_t old_ack) = 0;
 
     class Id_not_found : Genode::Exception {
     };
@@ -50,12 +55,19 @@ struct Nic_control::Session : Genode::Session {
 
     GENODE_RPC(Rpc_set_restore_mode, void, set_restore_mode, bool);
 
-    GENODE_RPC(Rpc_send_packet, void, send_packet, size_t, Dataspace_capability);
+    GENODE_RPC(Rpc_send_offset_packet, void, send_offset_packet, size_t, Dataspace_capability, uint32_t);
+
+    GENODE_RPC(Rpc_calculate_offsets, void, calculate_offsets, uint32_t);
 
     GENODE_RPC(Rpc_get_md_value, Nic_socket_metadata, get_md_value, Nic_socket_id, Dataspace_capability,
                Dataspace_capability);
 
-    GENODE_RPC_INTERFACE(Rpc_suspend, Rpc_resume, Rpc_set_restore_mode, Rpc_send_packet, Rpc_get_md_value);
+    GENODE_RPC_INTERFACE(Rpc_suspend,
+                         Rpc_resume,
+                         Rpc_set_restore_mode,
+                         Rpc_send_offset_packet,
+                         Rpc_calculate_offsets,
+                         Rpc_get_md_value);
 };
 
 /** Client implementation for [Nic_control] */
@@ -69,7 +81,11 @@ struct Nic_control::Session_client : Genode::Rpc_client<Session> {
 
     void set_restore_mode(bool enabled) override { call<Rpc_set_restore_mode>(enabled); };
 
-    void send_packet(size_t len, Dataspace_capability cap) override { call<Rpc_send_packet>(len, cap); }
+    void send_offset_packet(size_t len, Dataspace_capability cap, uint32_t expected_seq) override {
+        call<Rpc_send_offset_packet>(len, cap, expected_seq);
+    }
+
+    void calculate_offsets(uint32_t old_ack) override { call<Rpc_calculate_offsets>(old_ack); }
 
     Nic_socket_metadata get_md_value(
             Nic_socket_id id,

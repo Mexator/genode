@@ -1,6 +1,6 @@
 #include "submit_thread.h"
 #include <nic_trickster/interface.h>
-#include <nic_trickster/control/stopper.h>
+#include <nic_trickster/control/nic_control_impl.h>
 
 void Submitter::entry() {
     while (_i._sink().packet_avail()) {

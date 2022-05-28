@@ -11,6 +11,8 @@ void serialized_socket::save(std::ostream &out) {
     out << ack_packet_len << " ";
     out.write(ack_packet, ack_packet_len);
     out << " ";
+    out << seq << " ";
+    out << ack << " ";
     out << "\n";
 }
 
@@ -38,6 +40,8 @@ serialized_socket &serialized_socket::load(std::istream &in) {
         ret.ack_packet = new char[ret.ack_packet_len];
         in.read(ret.ack_packet, ret.ack_packet_len);
     }
+    in >> ret.seq;
+    in >> ret.ack;
     return ret;
 }
 
@@ -46,4 +50,6 @@ void serialized_socket::print(Genode::Output &out) const {
     Genode::print(out, (unsigned) state, " ");
     Genode::print(out, (const char *) boundAddress, " ");
     Genode::print(out, (const char *) remoteAddress, " ");
+    Genode::print(out, seq, " ");
+    Genode::print(out, ack, " ");
 }

@@ -42,7 +42,7 @@ void _main() {
     }
     log("Socket bound");
 
-    if (0 != listen(fd_proxy->map_fd(sock), 0)) {
+    if (0 != listen(fd_proxy->map_fd(sock), 1)) {
         error("while calling listen(), errno=", errno);
     }
     log("Socket listens");
@@ -63,9 +63,11 @@ void _main() {
 
         log("Accepted ", inet_ntop(AF_INET, &incoming_addr.sin_addr, addr, sizeof(in_addr)));
 
-        read(i, rcvd_msg, sizeof(rcvd_msg));
-        log("Read: ", (const char *) rcvd_msg, "\n");
-        write(i, message, sizeof(message));
+        while (Genode::strcmp(rcvd_msg, "stop")) {
+            read(i, rcvd_msg, sizeof(rcvd_msg));
+            log("Read: ", (const char *) rcvd_msg, "\n");
+            write(i, message, sizeof(message));
+        }
         sleep(1);
         fd_proxy->close(accept_fd);
     }

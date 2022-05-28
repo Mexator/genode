@@ -80,6 +80,8 @@ void Socket_supervisor::dump(std::ostream &out) {
         int ackLen = 0;
         char *ethBuf = nullptr;
         char *ackBuf = nullptr;
+        uint32_t seq = 0;
+        uint32_t ack = 0;
 
         if (node._entry.tcpState == ESTABLISHED) { // Ask Nic trickster for actual SEQ/ACKs and initiator packets
             Net::Ipv4_address addr;
@@ -113,6 +115,9 @@ void Socket_supervisor::dump(std::ostream &out) {
             Genode::memcpy(ackBuf, (void *) ack_attach_addr, ackLen);
 
             Genode::log("\033[95m(", nic_md._ack_size, *(Net::Ethernet_frame *) ackBuf, ")\033[0m ");
+
+            seq = nic_md.seq;
+            ack = nic_md.ack;
         }
 
         auto entry = node._entry;
@@ -123,7 +128,8 @@ void Socket_supervisor::dump(std::ostream &out) {
                 entry.boundAddress,
                 entry.remoteAddress,
                 ethLen, ethBuf,
-                ackLen, ackBuf
+                ackLen, ackBuf,
+                seq, ack
         };
         sock.save(out);
     });

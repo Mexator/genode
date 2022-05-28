@@ -22,6 +22,8 @@ struct serialized_socket {
     char *syn_packet;
     int ack_packet_len;
     char *ack_packet;
+    uint32_t seq;
+    uint32_t ack;
 
     void save(std::ostream &out);
 

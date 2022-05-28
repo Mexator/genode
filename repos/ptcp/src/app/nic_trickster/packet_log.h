@@ -21,9 +21,11 @@
 #include <net/udp.h>
 #include <net/dhcp.h>
 #include <net/ethernet.h>
-#include <net/tcp.h>
 #include <net/icmp.h>
 #include <net/ipv4.h>
+
+// Local includes
+#include <nic_trickster/tcp.h>
 
 namespace Net {
 

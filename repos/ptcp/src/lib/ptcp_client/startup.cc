@@ -93,12 +93,22 @@ void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
             log("Socket bound IN RESTORE");
         }
         if (entries[i].state == LISTEN) {
-            /* I don't know how it works, but even without a backlog connections
-             * are still possible even if handshake was performed before an
-             * accept call.
+            /*
+             * Lwip ignores provided backlog argument, so it is not important here.
+             * But if you expect it to work with lxip, the backlog should be sized
+             * as number of child sockets, if restoration happens in stages.
              *
-             * So, basically we can set backlog to 0. */
-            if (0 != listen(libc_fd, 0)) {
+             * Restoration in stages mean that all sockets reach SYN-RECEIVED state,
+             * then all sockets reach ESTABLISHED states. The other and simpler
+             * approach is to restore sockets one by one - wait for it to become
+             * established, and then start processing next socket.
+             *
+             * With the second approach backlog can be sized as 1, as there is only one
+             * connecting socket at a time. I use this approach as it simpler. However,
+             * it lacks performance (>500 ms for socket)
+             *
+             * So, basically we can set backlog to 1.  */
+            if (0 != listen(libc_fd, 1)) {
                 error("while calling listen(), errno=", errno);
             } else {
                 log("Socket listens IN RESTORE");
@@ -117,15 +127,16 @@ void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
             Genode::memcpy((void *) ds_attach_addr, entries[i].syn_packet, entries[i].syn_packet_len);
             Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) entries[i].syn_packet);
             Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) ds_attach_addr);
-            conn.send_packet(entries[i].syn_packet_len, ds);
+            conn.send_offset_packet(entries[i].syn_packet_len, ds, entries->ack - 1);
 
             usleep(250000); // Yield execution to tcp stack so it send SYN/ACK packets
 
             Genode::memcpy((void *) ds_attach_addr, entries[i].ack_packet, entries[i].ack_packet_len);
             Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) entries[i].ack_packet);
             Genode::log(entries[i].syn_packet_len, *(Net::Ethernet_frame *) ds_attach_addr);
-            conn.send_packet(entries[i].ack_packet_len, ds);
+            conn.send_offset_packet(entries[i].ack_packet_len, ds, entries->ack);
 
+            conn.calculate_offsets(entries[i].seq);
             usleep(250000); // Yield execution to tcp stack so it receive ACK#3 packets
 
             Pfd parent = find_listening_parent(entries[i], entries, len);
@@ -133,7 +144,6 @@ void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
             int sock = accept(fd_proxy->map_fd(parent), nullptr, nullptr);
             Genode::warning("Accepted! ", sock);
             fd_proxy->set(sock, entries[i].pfd);
-            write(fd_proxy->map_fd(Pfd{entries[i].pfd}), "IS THIS WORKS!!!!???", 21);
         }
     }
     conn.set_restore_mode(false);

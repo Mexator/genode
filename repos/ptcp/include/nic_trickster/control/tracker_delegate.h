@@ -9,6 +9,10 @@
 #define TRACKER_DEBUG true
 #endif
 
+#ifndef TRACKER_LOOKUP_DEBUG
+#define TRACKER_LOOKUP_DEBUG false
+#endif
+
 using Genode::log;
 
 namespace Tracker {
@@ -20,9 +24,14 @@ using uint8_t = Genode::uint8_t;
 using uint16_t = Genode::uint16_t;
 using uint32_t = Genode::uint32_t;
 
+// Y - initial SEQ of localhost
+// X - initial SEQ of remote
 struct Tracker::Nic_socket_metadata {
     int _eth_size;
     int _ack_size;
+    uint32_t out_seq_offset; // n
+    uint32_t seq; // Last packet ACKed by remote (Y + n)
+    uint32_t ack; // Last packet ACKed by local (X + m)
 };
 
 /** Each socket is identified by 4-tuple:
@@ -43,8 +52,8 @@ using namespace Tracker;
 struct Tracker_delegate {
 
     struct list_item {
-        Nic_socket_id* id;
-        Nic_socket_metadata* md;
+        Nic_socket_id *id;
+        Nic_socket_metadata *md;
         Net::Ethernet_frame *synFrame;
         Net::Ethernet_frame *ackFrame;
         list_item *next;
@@ -55,11 +64,11 @@ struct Tracker_delegate {
 
     Tracker_delegate(Genode::Allocator &allocator);
 
-    void packet_from_host(const Net::Ethernet_frame &packet);
+    void packet_from_host(Net::Ethernet_frame &packet);
 
     void packet_to_host(const Net::Ethernet_frame &packet);
 
-    list_item* lookup(Nic_socket_id& id);
+    list_item *lookup(Nic_socket_id &id);
 };
 
 extern Tracker_delegate *delegate;

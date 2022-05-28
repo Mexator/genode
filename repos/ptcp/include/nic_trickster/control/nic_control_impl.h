@@ -20,6 +20,11 @@ using namespace Nic_control;
 // Server RPC object implementation for Nic_control
 class Nic_control_impl : public Genode::Rpc_object<Nic_control::Session> {
     Genode::Env &_env;
+
+private:
+    // Sends ethernet frame located in the provided dataspace to client of Nic session
+    void send_packet(size_t len, Dataspace_capability cap);
+
 public:
     Nic_control_impl(Genode::Env &env) : _env(env) {}
 
@@ -32,7 +37,9 @@ public:
 
     void set_restore_mode(bool enabled) override;
 
-    void send_packet(size_t len, Dataspace_capability cap) override;
+    void send_offset_packet(size_t len, Dataspace_capability cap, uint32_t expected_seq) override;
+
+    void calculate_offsets(uint32_t old_ack) override;
 
     Nic_socket_metadata get_md_value(Nic_socket_id id, Dataspace_capability cap, Dataspace_capability ackCap) override;
 };

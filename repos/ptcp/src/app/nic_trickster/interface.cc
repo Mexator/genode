@@ -14,7 +14,7 @@
 /* local includes */
 #include <nic_trickster/interface.h>
 #include "packet_log.h"
-#include <nic_trickster/control/stopper.h>
+#include <nic_trickster/control/nic_control_impl.h>
 #include <nic_trickster/control/tracker_delegate.h>
 
 /* Genode includes */
