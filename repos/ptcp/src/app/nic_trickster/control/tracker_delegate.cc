@@ -6,6 +6,7 @@
 #include <logging/mylog.h>
 
 using namespace Net;
+using Genode::Hex;
 
 bool Tracker::Nic_socket_id::operator==(const Tracker::Nic_socket_id &other) {
     debug_log(TRACKER_LOOKUP_DEBUG, "(", __func__,
@@ -50,6 +51,47 @@ void Tracker_delegate::packet_from_host(Ethernet_frame &packet) {
             // offset seq number of out-coming packets
             uint32_t seq_offset = 0;
             if (md) { seq_offset = md->md->out_seq_offset; }
+
+            // I had hypothesis that packets get rejected because of wrong timestamps.
+            // This code might be useful so I kept it
+//
+//            Genode::warning("here");
+//            int tsStart=0;
+//            char *ptr = (char *) &tcp._data;
+//            int tcpLen = ipv4.total_length() - sizeof(ipv4) - sizeof(tcp);
+//            if (tcpLen != 0) {
+//                Genode::warning("tspLen", tcpLen);
+//                for (int i = 0; i < tcpLen; ++i) {
+//                    uint8_t tsval = ptr[i];
+//                    if (tsval == 0x8) {
+//                        tsStart = i;
+//                        break;
+//                    }
+//                }
+//                tsStart += 1;
+//                uint32_t tsVal;
+//                Genode::memcpy(&tsVal, ptr + tsStart + 1, 4);
+//                uint32_t tsEcho;
+//                Genode::memcpy(&tsEcho, ptr + tsStart + 4 + 1, 4);
+//                tsVal = host_to_big_endian(tsVal);
+//                tsEcho = host_to_big_endian(tsEcho);
+//                Genode::warning("tsVal_old", Hex(tsVal));
+//                uint16_t oft = 0;
+//                if (seq_offset) {
+//                    oft = 10000;
+//                }
+//                tsVal += oft;
+//                Genode::warning("tsVal", Hex(tsVal));
+//
+//                tsVal = host_to_big_endian(tsVal);
+//                tsEcho = host_to_big_endian(tsEcho);
+//                Genode::memcpy(ptr + tsStart + 1, &tsVal, 4);
+//                Genode::memcpy(&tsVal, ptr + tsStart + 1, 4);
+//                Genode::warning("tsVal_updated", Hex(tsVal));
+//
+//                uint16_t newch = ~(~tcp.checksum() + oft);
+//                tcp._checksum = host_to_big_endian(newch);
+//            }
             tcp._seq_nr = host_to_big_endian(tcp.seq_nr() + seq_offset);
             uint16_t newch = ~(~tcp.checksum() + seq_offset);
             tcp._checksum = host_to_big_endian(newch);
@@ -93,6 +135,13 @@ void Tracker_delegate::packet_to_host(const Ethernet_frame &packet) {
                 item->md->seq = tcp.ack_nr();
                 debug_log(TRACKER_DEBUG, "Local seq increased, new seq = ", item->md->seq);
             }
+
+            // offset ack number of incoming packets to match offset of out-coming packets
+            uint32_t seq_offset = 0;
+            if (item) { seq_offset = item->md->out_seq_offset; }
+            tcp._ack_nr = host_to_big_endian(tcp.ack_nr() - seq_offset);
+            uint16_t newch = ~(~tcp.checksum() - seq_offset);
+            tcp._checksum = host_to_big_endian(newch);
 
             uint16_t mask = 0x0FFF;
             bool ack_only = (tcp.flags() & mask) == 0x10;

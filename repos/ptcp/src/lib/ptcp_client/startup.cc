@@ -16,6 +16,8 @@ using Genode::log;
 using Genode::error;
 using namespace Ptcp;
 
+char *snapshot_path;
+
 void init(Genode::Env &env, Genode::Allocator &alloc) {
     fd_proxy = new(alloc) Fd_proxy(alloc);
 
@@ -24,6 +26,11 @@ void init(Genode::Env &env, Genode::Allocator &alloc) {
     Genode::log("Nic_control Connected!");
 
     socket_supervisor = new(alloc) Socket_supervisor(alloc, env, *conn);
+
+    snapshot_path = new char[1024];
+    std::string s("/snapshot/sockets");
+    s.append(env.pd().service_name());
+    Genode::copy_cstring(snapshot_path, s.c_str(), s.length());
 }
 
 Pfd find_listening_parent(serialized_socket &entry, serialized_socket *items, size_t count) {
@@ -40,7 +47,7 @@ Pfd find_listening_parent(serialized_socket &entry, serialized_socket *items, si
 
 void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
     std::ifstream snapshot;
-    snapshot.open("/snapshot/sockets");
+    snapshot.open(snapshot_path);
     if (!snapshot.is_open()) {
         snapshot.close();
         Genode::warning("Can't open snapshot");
@@ -155,7 +162,7 @@ void restore_sockets_state(Genode::Env &env, Nic_control::Connection &conn) {
     while (true) {
         sleep(5);
         std::ofstream snapshot;
-        snapshot.open("/snapshot/sockets");
+        snapshot.open(snapshot_path);
         socket_supervisor->dump(snapshot);
         snapshot.close();
     }
